@@ -1,0 +1,263 @@
+<?php
+
+/*
+ * This file should be put in the islandora modules plugins directory
+ * typical usage: drush -u 1 islandora_update_book_rels path_to_query_file TRUE
+ * the above would give you an interactive update for each book.  If TRUE is changed to FALSE it will run against all
+ * books returned from the query
+ * 
+ * If this is being run from a multi site env. you will probably have to use the --uri switch
+ * 'drush -u 1 --uri=http://localhost islandora_update_book_rels /path/to/query.txt TRUE'.  You should also be in the subsites
+ * sites directory or a subdirectory of it.
+ * 
+ */
+
+//drush hook
+
+function islandora_lowercase_hocr_drush_command() {
+  $items = array();
+
+  $items['islandora_lowercase_hocr'] = array(
+    'description' => "updates a books pages so the hocr datastream is all lower case",
+    'arguments' => array(
+      'query_file' => 'The path to a plain text file that contains an itql query.  This query should return a list of books (pids)',
+      'interactive' => 'if TRUE then you will be asked to confirm the update for each book object'
+    ),
+    'examples' => array(
+      'drush -u 1 --uri=http://localhost islandora_lowercase_hocr /path/to/query.txt TRUE',
+    ),
+    'aliases' => array('islandorlowerhocr'),
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN, // we can pass in users id on the command line using drush -u.
+  );
+
+  return $items;
+}
+
+/**
+ * This is the drush command specified in the array create by the drush entry point.
+ * 
+ * This function checks to make sure parameters are supplied and if everything is ok
+ * calls the doAction function
+ * 
+ * @param string $query_file
+ *  path to a text file that contains an itql query
+ * @param boolean $interactive
+ * 
+ */
+function drush_islandora_lowercase_hocr($query_file, $interactive) {
+  drush_print('Current working directory ' . getcwd());
+  if (isset($query_file)) {
+    drush_print(" using query file" . $query_file);
+  }
+  else {
+    drush_print(" no query_file found");
+    return;
+  }
+  islandora_lowercase_hocr_doAction($query_file, $interactive);
+}
+
+/**
+ * Iterates through all the books returned by the itql query and updates the rels stream for the pages of each book
+ * 
+ * @param string $query_file
+ * @param boolean $interactive
+ * 
+ */
+function islandora_lowercase_hocr_doAction($query_file, $interactive) {
+  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+  $query = file_get_contents($query_file);
+  drush_print($query);
+  if (!isset($query)) {
+    drush_die('no query found');
+    return;
+  }
+  $results = islandora_run_query($query);
+  $objects = islandora_sparql_results_as_array($results);
+  foreach ($objects as $object) {
+    drush_print($object);
+  }
+  $num = count($objects);
+  if (!drush_confirm(dt('are you sure you want to update all pages in @num of books?', array('@num' => $num)))) {
+    // was: return drush_set_error('CORE_SYNC_ABORT', 'Aborting.');
+    drush_die('Aborting.');
+  }
+
+  if ($interactive == 'TRUE') {
+    foreach ($objects as $object) {
+      if (drush_confirm(dt('update all page hocr streams in this book @pid ?', array('@pid' => $object)))) {
+        //$item = new Fedora_Item($object);
+        islandora_update_books_hocr_streams($object);
+      }
+    }
+  }
+  else {
+    foreach ($objects as $object) {
+      //$item = new Fedora_Item($object);
+      islandora_update_books_hocr_streams($object);
+    }
+  }
+}
+
+/**
+ * returns an array of pids 
+ * @todo pull this up into an api
+ * @param SimpleXMLElement $content
+ * @return array
+ */
+/**
+  function islandora_sparql_results_as_array($content) {
+  $content = new SimpleXMLElement($content);
+
+  $resultsarray = array();
+  foreach ($content->results->result as $result) {
+  $resultsarray[] = substr($result->object->attributes()->uri, 12); // Remove 'info:fedora/'.
+  }
+  return $resultsarray;
+  } */
+
+/**
+ * update all the pages objects rels-ext of this book
+ * 
+ * @param string $book_pid
+ * 
+ */
+function islandora_update_books_hocr_streams($book_pid) {
+  module_load_include('inc', 'islandora_book', 'book_pack_utils');
+  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+  module_load_include('inc', 'islandora_fedora_api', 'islandora_fedora_api.raw');
+  //$fapim = new FedoraAPIM(NULL);
+
+  $page_pids = islandora_update_book_rels_get_page_pids($book_pid);
+  $page_num = 1;
+
+  //update all the page rels
+  foreach ($page_pids as $pid) {
+    /* try {
+      $response = $fapim->addRelationship($pid, 'info:islandora/islandora-system:def/paged-item-info#sequenceNumber', $page_num++, $optional_args = array('isLiteral' => 'TRUE'));
+      drush_print(dt('updated sequence number for @pid', array('@pid' => $pid)));
+      } catch (Exception $e) {
+      drush_print(dt('Error updating relationship isPageNumber for object %pid', array('%pid' => $pid)));
+      }
+      try {
+      $response = $fapim->addRelationship($pid, 'info:islandora/islandora-system:def/paged-item-info#section', '1' , $optional_args = array('isLiteral' => 'TRUE'));
+      drush_print(dt('updated section number for @pid', array('@pid' => $pid)));
+      } catch (Exception $e) {
+      drush_print(dt('Error updating relationship isPageNumber for object %pid', array('%pid' => $pid)));
+      }
+      try {
+      $response = $fapim->addRelationship($pid, 'info:islandora/islandora-system:def/paged-item-info#isPageOf', $book_pid);
+      drush_print(dt('updated ispageOf for @pid', array('@pid' => $pid)));
+      } catch (Excepition $e) {
+      drush_print(dt('Error updating relationship isPageOf for object %pid', array('%pid' => $pid)));
+      } */
+
+    islandora_update_page_hocr_streams($book_pid, $pid, $page_num++);
+    time_nanosleep(0, 200000000); //give the server some rest between calls
+  }
+}
+
+function islandora_update_page_hocr_streams($book_pid, $pid, $page_number) {
+  $rdf_string = <<<RDF
+  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+<rdf:Description rdf:about="info:fedora/$pid">
+	<hasModel xmlns="info:fedora/fedora-system:def/model#" rdf:resource="info:fedora/islandora:pageCModel"></hasModel>
+	<isSequenceNumber xmlns="http://islandora.ca/ontology/relsext#">$page_number</isSequenceNumber>
+	<isMemberOf xmlns="info:fedora/fedora-system:def/relations-external#" rdf:resource="info:fedora/$book_pid"></isMemberOf>
+	<isSection xmlns="http://islandora.ca/ontology/relsext#">1</isSection>
+	<isPageOf xmlns="http://islandora.ca/ontology/relsext#" rdf:resource="inf:fedora/$book_pid"></isPageOf>
+  <isPageNumber xmlns="http://islandora.ca/ontology/relsext#">$page_number</isPageNumber>
+</rdf:Description>
+</rdf:RDF>
+RDF;
+  //drush_print($rdf_string);
+  $item = new Fedora_Item($pid);
+  drupal_get_path('module', 'islandora_bookviewer');
+  try {
+    $proc = new XsltProcessor();
+    $hocr = $item->get_datastream_dissemination('ENCODED_OCR');
+  } catch (Exception $e) {
+    drush_print ('error loading xslt');
+    exit();
+  }
+  $path = drupal_get_path ('module','islandora_bookviewer');
+  $xsl = new DomDocument();
+  $test = $xsl->load($path . '/xslt/hocrToLowerhocr.xsl');
+  $error = FALSE;
+  if(!$test ){
+    drush_print ('Error loading style sheet when processing '.$pid);
+    $error = TRUE;
+  }
+  if(empty($hocr)){
+    drush_print('Error loading hocr data when processiong '.$pid);
+    $error = TRUE;
+  }
+  if($error){
+    $item->forget();
+    return;
+  }
+  $input = new DomDocument();
+  $input->loadXML($hocr);
+  $xsl = $proc->importStylesheet($xsl);
+  $newdom = $proc->transformToDoc($input);
+  $content = $newdom->saveXML();
+  $value = $item->modify_datastream($content, 'ENCODED_OCR', 'ENCODED_OCR', 'text/xml', $force = FALSE, $logMessage='Modified by Islandora API using islandora_lowercase_hocr drush script', TRUE);
+  //$value = $item->modify_datastream_by_value($rdf_string, 'RELS-EXT', 'RELS-EXT', 'text/xml', $force = FALSE, $logMessage = 'Modified by Drush using Islandora API', $quiet = FALSE);
+  if (isset($value)) {
+    drush_print('successfully updated ENCODED_OCR for ' . $pid);
+  }
+  else {
+    drush_print('Error updating ENCODED_OCR for ' . $pid);
+  }
+  $item->forget();
+}
+
+/**
+ *
+ * Returns the pids of all pages associated with a book object
+ * @param  string $book_pid
+ * @return string
+ */
+/*
+  function islandora_update_book_rels_get_page_pids($book_pid) {
+  //return get_sorted_pages($book_pid); //not sure why we have two different functions
+  $query = <<<XML
+  select \$object \$title from <#ri>
+  where (\$object <dc:title> \$title
+  and \$object <fedora-rels-ext:isMemberOf> <info:fedora/$book_pid>
+  and \$object <fedora-model:state> <info:fedora/fedora-system:def/model#Active>)
+  order by \$title
+  XML;
+
+
+  module_load_include('inc', 'fedora_repository', 'CollectionClass');
+  $collection = new CollectionClass($book_pid);
+  $contents = $collection->getRelatedItems($book_pid, $query);
+  $results_xml = simplexml_load_string($contents);
+  $resultsarray = array();
+  $book_pids = array();
+  foreach ($results_xml->results->result as $result) {
+  $book_pids[] = str_replace('info:fedora/', '', $result->object->attributes()->uri);
+  }
+  return $book_pids;
+  } */
+
+/**
+ * @todo pull this function up into an api and remove from here
+ * executes a supplied itql query
+ * @param string $query
+ * @return type 
+ */
+/*
+function islandora_run_query($query) {
+  module_load_include('inc', 'fedora_repository', 'CollectionClass');
+  $cc = new CollectionClass();
+  $results = $cc->getRelatedItems(NULL, $query, 1000000);
+  if (isset($results)) {//still doesn't tell us if these are valid results
+    return $results;
+  }
+  else {
+    drush_print('Error get related items, relationships cannot be updated');
+  }
+}*/
+
+?>
