@@ -2,13 +2,8 @@
 
 /*
  * This file should be put in the islandora modules plugins directory
- * typical usage: drush -u 1 islandora_update_book_rels path_to_query_file TRUE
- * the above would give you an interactive update for each book.  If TRUE is changed to FALSE it will run against all
- * books returned from the query
- * 
- * If this is being run from a multi site env. you will probably have to use the --uri switch
- * 'drush -u 1 --uri=http://localhost islandora_update_book_rels /path/to/query.txt TRUE'.  You should also be in the subsites
- * sites directory or a subdirectory of it.
+ * typical usage: drush -u 1 
+ *
  * 
  */
 
