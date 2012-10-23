@@ -57,7 +57,7 @@ function islandora_export_objects_doAction($query_file, $interactive) {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
   $query = file_get_contents($query_file);
   $location = drush_find_tmp();
-  drush_print ('files are located in '.$location);
+  drush_print('files are located in ' . $location);
   drush_print($query);
   if (!isset($query)) {
     drush_die('no query found');
@@ -80,10 +80,12 @@ function islandora_export_objects_doAction($query_file, $interactive) {
     foreach ($objects as $object) {
       if (drush_confirm(dt('export this  @pid ?', array('@pid' => $object)))) {
         $item = new Fedora_Item($object);
-        $foxml = $item->export_as_foxml();
+        $foxml = $item->export_as_foxml('archive');
         $file_name = str_replace(':', '-', $item->pid);
-        file_put_contents(drush_find_tmp() . '/' . $file_name.'.foxml', $foxml);
-        //$item->forget();//on vre2 this function does not exist
+        $file_name = drush_find_tmp() . '/drush_export/' . $file_name . '.foxml';
+        drush_print('saving file to ' . $file_name);
+        file_put_contents($file_name, $foxml);
+        $item->forget(); //on some vre2 sites this function does not exist
         unset($item);
       }
     }
@@ -91,17 +93,17 @@ function islandora_export_objects_doAction($query_file, $interactive) {
   else {
     foreach ($objects as $object) {
       $item = new Fedora_Item($object);
-      $foxml = $item->export_as_foxml();
+      $foxml = $item->export_as_foxml('archive');
       $file_name = str_replace(':', '-', $item->pid);
-      file_put_contents(drush_find_tmp() . '/' . $file_name.'.foxml', $foxml);
-      //$item->forget();
+      $file_name = drush_find_tmp() . '/drush_export/' . $file_name . '.foxml';
+      drush_print('saving file to ' . $file_name);
+      file_put_contents($file_name, $foxml);
+      $item->forget();
       unset($item);
     }
   }
-  drush_print ('files are located in '.$location);
+  drush_print('files are located in ' . $location);
 }
-
-
 
 /**
  *
@@ -132,7 +134,7 @@ function islandora_export_sparql_results_as_array($content) {
 function islandora_export_run_query($query) {
   module_load_include('inc', 'fedora_repository', 'CollectionClass');
   $cc = new CollectionClass();
-  $results = $cc->getRelatedItems(NULL, $query,1000000);
+  $results = $cc->getRelatedItems(NULL, $query, 1000000);
   if (isset($results)) {//still doesn't tell us if these are valid results
     return $results;
   }

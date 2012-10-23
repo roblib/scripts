@@ -82,12 +82,12 @@ function islandora_update_csv_go($csv_file, $dsid, $interactive = FALSE) {
         if (drush_confirm(dt('update this @pid ?', array('@pid' => $pid)))) {
           //$item = new Fedora_Item($object);
           islandora_update_datastream_from_csv($pid, $dsid, $data);
-          drush_print("processed $object # " . $line_number);
+          drush_print("processed $pid # " . $line_number);
         }
       }
       else {
         islandora_update_datastream_from_csv($pid, $dsid, $data);
-        drush_print("processed $object # " . $line_number);
+        drush_print("processed $pid # " . $line_number);
       }
     }
   }
@@ -141,17 +141,23 @@ function islandora_update_datastream_from_csv($pid, $dsid, $data) {
     $updated = TRUE;
   }
 
+  //u2 = departments
   $elements = $sxml->xpath('//ns:identifier[@type="u2"]');
    
   $new_strs = explode(';', $data[4]);
-  $orginal_strs = array();
+  $original_strs = array();
   $arr = array();
   foreach ($elements as $node) {
     $original_strs[] = (string) $node;
   }
    islandora_update_write_log(dt('processing %pid u2 field', array('%pid' => $pid)), 'islandora_update_from_csv.log');
     //islandora_update_write_log(dt('original string = %org_string new string = %new_string', array('%org_string' => $original_str, '%new_string' => $new_str)), 'islandora_update_from_csv.log');
-  $arr = array_diff($new_strs, $original_strs);    
+   if(!empty($original_strs)){
+    $arr = array_diff($new_strs, $original_strs);    
+   } else {
+     $arr = $new_strs;
+   }
+   
   foreach ($arr as $new_str) {
     if (!empty($new_str)) {
       $new_node = $sxml->addChild('identifier', $new_str, 'http://www.loc.gov/mods/v3');
@@ -170,10 +176,10 @@ function islandora_update_datastream_from_csv($pid, $dsid, $data) {
     }
     else {
       islandora_update_write_log(dt('error updating %dsid for %pid', array('%dsid' => $dsid, '%pid' => $pid)), 'islandora_update_from_csv.log', 'error');
-    }
-    time_nanosleep(0, 20000000);
+    }   
+    time_nanosleep(0, 250000000);
   }
-  $item->forget();
+    $item->forget();
 }
 
 ?>
