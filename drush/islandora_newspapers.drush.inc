@@ -53,10 +53,12 @@ function drush_islandora_newspapers_islandora_ingest_newspapers($query_file, $in
 function create_book_object($data) {
   
   module_load_include('inc', 'islandora', 'RestConnection');
-  require_once "/var/www/html/drupal/sites/all/modules/islandora/RestConnection.inc";
+  //require_once "/var/www/html/drupal/sites/all/modules/islandora/RestConnection.inc";
   
-  $connection = new RestConnection();
-
+  //$connection = new RestConnection();
+  $tuque = islandora_get_tuque_connection();
+  $connection = $tuque->connection;
+  
   $date = $data[3];
   $title = $data[2];
   $volume = $data[4];
@@ -168,7 +170,7 @@ BOOKRDF;
   
   $object->ingestDatastream($rels_datastream);  
   
-  $ingest = $connection->repository->ingestObject($object);
+  $ingest = $tuque->repository->ingestObject($object);
   
   if ($ingest == TRUE) {
     drush_log(dt("Book object @pid created successfully\n", array('@pid' => $pid)), 'success');
@@ -182,8 +184,8 @@ BOOKRDF;
 
 function create_page_object($file_path, $data, $reel_number, $collection_pid) {
 
-  require_once "/var/www/html/drupal/sites/all/modules/islandora/RestConnection.inc";  
-  $connection = new RestConnection();
+  $connection = islandora_get_tuque_connection();
+ 
 
   $page_number_short = $data[7];
   $page_number_leading_zeros = $data[8];

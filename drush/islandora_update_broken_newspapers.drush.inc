@@ -106,7 +106,8 @@ function islandora_update_newspaper_go($csv_file, $interactive = FALSE, $action 
 function islandora_update_newspaper_rels($pid) {
   $item = islandora_object_load($pid);
   $item->relationships->remove('info:fedora/fedora-system:def/model#','hasModel');
-  $item->relationships->add(FEDORA_RELS_EXT_URI, 'hasModel', 'islandora:issueCModel');
+  $item->relationships->remove("info:fedora/fedora-system:def/relations-external#",'hasModel');
+  $item->relationships->add('info:fedora/fedora-system:def/model#', 'hasModel', 'islandora:issueCModel');
 }
 
 /**
