@@ -178,7 +178,7 @@ BOOKRDF;
   else {
     drush_log(dt("There was an error creating the book object!\n", 'warning'));
   }
-
+  unset($object);
   return $pid;
 }
 
@@ -324,6 +324,8 @@ RDF;
   else {
     drush_log(dt("There was an error creating the page object!\n"), 'error');
   }
+  
+  unset($object);//make sure destructors are called as this script can run for a long time.
 
   return $pid;
 }
