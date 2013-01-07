@@ -169,8 +169,13 @@ BOOKRDF;
   $rels_datastream->logMessage = 'RELS-EXT datastream created using Newspapers batch ingest script || SUCCESS';
   
   $object->ingestDatastream($rels_datastream);  
-  
+  try{
   $ingest = $tuque->repository->ingestObject($object);
+  }catch(Exception $e){
+    unset($object);
+    throw($e);
+  }
+  
   
   if ($ingest == TRUE) {
     drush_log(dt("Book object @pid created successfully\n", array('@pid' => $pid)), 'success');
@@ -179,6 +184,10 @@ BOOKRDF;
     drush_log(dt("There was an error creating the book object!\n", 'warning'));
   }
   unset($object);
+  unset($mods_datastream);
+  unset($rels_datastream);
+  unset($dc_datastream);
+  
   return $pid;
 }
 
@@ -204,7 +213,7 @@ function create_page_object($file_path, $data, $reel_number, $collection_pid) {
     if ($exec_return == 0) {
       $book_item = new FedoraObject($collection_pid, $connection->repository);
       $tn_datastream = new NewFedoraDatastream('TN', 'M', $book_item, $connection->repository);
-      $tn_datastream->setContentFromFile($tmp_file);
+      $tn_datastream->setContentFromFile($tmp_file, FALSE);
       $tn_datastream->label = 'Thumbnail';
       $tn_datastream->mimetype = 'image/jpg';
       $tn_datastream->checksum = TRUE;
@@ -299,7 +308,7 @@ RDF;
   $object->ingestDatastream($mods_datastream);
   
   $image_datastream = new NewFedoraDatastream('TIFF', 'M', $object, $connection->repository);
-  $image_datastream->setContentFromFile($file_name);
+  $image_datastream->setContentFromFile($file_name, FALSE);
   $image_datastream->label = 'TIFF image';
   $image_datastream->mimetype = 'image/tiff';
   $image_datastream->checksum = TRUE;
@@ -315,8 +324,12 @@ RDF;
   $rels_datastream->logMessage = 'RELS-EXT datastream created using Newspapers batch ingest script || SUCCESS';
   
   $object->ingestDatastream($rels_datastream);
-
+  try{
   $ingest = $connection->repository->ingestObject($object);
+  }catch(Exception $e){
+    unset($object);
+    throw($e);
+  }
 
   if ($ingest == TRUE) {
     drush_log(dt("Page object @pid created successfully\n", array('@pid' => $pid)), 'success');
@@ -326,6 +339,11 @@ RDF;
   }
   
   unset($object);//make sure destructors are called as this script can run for a long time.
+  unset($image_datastream);
+  unset($mods_datastream);
+  unset($rels_datastream);
+  unset($dc_datastream);
+  
 
   return $pid;
 }
