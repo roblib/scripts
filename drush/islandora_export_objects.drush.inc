@@ -16,7 +16,8 @@ function islandora_export_objects_drush_command() {
   $items = array();
 
   $items['islandora_export_objects'] = array(
-    'description' => "exports foxml for each object returned by a query, files will be located in the sites temp dir.",
+    'description' => "exports foxml for each object returned by a query, files will be located in the sites temp dir.
+      Currently relies on the Drupal 6 version of Islandora",
     'arguments' => array(
       'query_file' => 'The path to a plain text file that contains an itql query',
       'interactive' => 'if TRUE then you will be asked to confirm the export for each object'

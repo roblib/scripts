@@ -12,7 +12,8 @@ function islandora_update_departments_solr_drush_command() {
   $items = array();
 
   $items['islandora_update_departments_solr_drush'] = array(
-    'description' => "Reads a solr result set and updates the mods:identifier[@type='u2'] field.  This is specific to islandscholar",
+    'description' => "Reads a solr result set and updates the mods:identifier[@type='u2'] field.  This is specific to islandscholar.
+       Currently requires Drupal6 Islandora",
     'arguments' => array(
       'solr_file' => 'The path to a csv file that contains columns as described in the description.',
       'datastream_id' => 'the id of the datastream to load',

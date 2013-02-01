@@ -1,8 +1,8 @@
 <?php
 
 /*
- * This file should be put in the islandora modules plugins directory
- * typical usage: drush -u 1 
+ * put this file where ever you put your drush commands
+ * 
  *
  * 
  */
@@ -13,9 +13,7 @@ function islandora_update_metadata_drush_command() {
   $items = array();
 
   $items['islandora_update_metadata'] = array(
-    'description' => "scans the MODS datastream for fields with certain values and corrects known errors.  
-      Requires the Drupal6 version of Islandora.  There is also a Drupal 7 version of this script.  If they are 
-      both accessible to drush they may cause conflicts.",
+    'description' => "scans the supplied datastream for fields with certain values and corrects known errors, this version requires drupal7 islandora",
     'arguments' => array(
       'query_file' => 'The path to a plain text file that contains an itql query.  This query should return a list of pids.',
       'substitution_text_file' => 'A text file that contains the values to be replaced and the values to update it with.
@@ -80,6 +78,9 @@ function islandora_update_metadata_go($query_file, $substitution_text_file, $dat
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
   $query = file_get_contents($query_file);
   $substitution_text = file_get_contents($substitution_text_file);
+  global $user;
+  $tuque = islandora_get_tuque_connection($user);
+  $repository = $tuque->repository;
   if (!isset($query)) {
     drush_die('no query found');
     return;
@@ -88,7 +89,8 @@ function islandora_update_metadata_go($query_file, $substitution_text_file, $dat
     drush_die('no substitution text loaded');
     return;
   }
-  $results = islandora_update_run_query($query);
+  //$results = islandora_update_run_query($query);
+  $results = $repository->ri->itqlQuery($query);
   $objects = islandora_update_sparql_results_as_array($results);
   foreach ($objects as $object) {
     drush_print($object);
@@ -126,12 +128,11 @@ function islandora_update_metadata_go($query_file, $substitution_text_file, $dat
  * @param SimpleXMLElement $content
  * @return array
  */
-function islandora_update_sparql_results_as_array($content) {
-  $content = new SimpleXMLElement($content);
-
+function islandora_update_sparql_results_as_array($results) {
   $resultsarray = array();
-  foreach ($content->results->result as $result) {
-    $resultsarray[] = substr($result->object->attributes()->uri, 12); // Remove 'info:fedora/'.
+  foreach($results as $result){
+   // var_dump($result);
+    $resultsarray[] = $result['object']['value'];
   }
   return $resultsarray;
 }
@@ -143,20 +144,19 @@ function islandora_update_sparql_results_as_array($content) {
  * 
  */
 function islandora_update_datastream($pid, $a_keys, $a_values, $dsid, $xpath, $namespace) {
-  module_load_include('inc', 'islandora_book', 'book_pack_utils');
-  module_load_include('inc', 'fedora_repository', 'api/fedora_item');
-  module_load_include('inc', 'islandora_fedora_api', 'islandora_fedora_api.raw');
-
-  $item = new Fedora_Item($pid);
+  
+  $item = islandora_object_load($pid);
   if (!isset($item)) {
     islandora_update_write_log(dt('error creating object %pid', array('%pid' => $pid)),'islandora_update.log','error');
   }
-
-  $metadata = $item->get_datastream_dissemination($dsid);
-  $sxml = simplexml_load_string($metadata);
-  if (!$sxml) {
+  
+  $metadata = $item[$dsid]->content;
+  $sxml = simplexml_load_string(trim($metadata));
+  $test = $sxml->asXML();
+  
+  if ($sxml == FALSE) {
     islandora_update_write_log(dt('error processing %pid', array('%pid' => $pid)),'islandora_update.log','error');
-    $item->forget();
+    unset($item);
     return;
   }
   if ($namespace != 'NULL') {//we will look for a string of NULL in case we don't want namespace
@@ -178,7 +178,7 @@ function islandora_update_datastream($pid, $a_keys, $a_values, $dsid, $xpath, $n
 
     $content = $sxml->asXML();
     if (isset($content))
-      $value = $item->modify_datastream($content, $dsid, $dsid, 'text/xml', $force = FALSE, $logMessage = 'Modified by Islandora API using islandora_update_metadata drush script', TRUE);
+      $value = $item[$dsid]->content = $content;
     if (isset($value)) {
       islandora_update_write_log(dt('successfully updated %dsid for %pid', array('%dsid' => $dsid, '%pid' => $pid)),'islandora_update.log');
     }
@@ -187,26 +187,10 @@ function islandora_update_datastream($pid, $a_keys, $a_values, $dsid, $xpath, $n
     }
     time_nanosleep(0, 20000000);
   }
-  $item->forget();
+  unset($item);
 }
 
-/**
- * @todo pull this function up into an api and remove from here
- * executes a supplied itql query
- * @param string $query
- * @return type 
- */
-function islandora_update_run_query($query) {
-  module_load_include('inc', 'fedora_repository', 'CollectionClass');
-  $cc = new CollectionClass();
-  $results = $cc->getRelatedItems(NULL, $query, 1000000);
-  if (isset($results)) {//still doesn't tell us if these are valid results
-    return $results;
-  }
-  else {
-    islandora_update_write_log('Error get related items, relationships cannot be updated','islandora_update.log','error');
-  }
-}
+
 
 /**
  * writes to a log file.  

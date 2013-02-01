@@ -18,7 +18,8 @@ function islandora_update_book_rels_drush_command() {
   $items = array();
 
   $items['islandora_update_book_rels'] = array(
-    'description' => "updates books and pages so the RELS-EXT datastream is compliant with the Islandora internet Archive book viewer",
+    'description' => "updates books and pages so the RELS-EXT datastream is compliant with the Islandora internet Archive book viewer.
+        Currently relies on the Drupal6 version of Islandora.",
     'arguments' => array(
       'query_file' => 'The path to a plain text file that contains an itql query.  This query should return a list of books (pids)',
       'interactive' => 'if TRUE then you will be asked to confirm the update for each object'

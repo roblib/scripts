@@ -12,7 +12,8 @@ function islandora_update_from_csv_drush_command() {
   $items = array();
 
   $items['islandora_update_from_csv_drush'] = array(
-    'description' => "Reads a csv file first column is pid 2nd is username and third column is department.  This is specific to islandscholar",
+    'description' => "Reads a csv file first column is pid 2nd is username and third column is department.  This is specific to islandscholar UPEI,
+       and requires Drupal6 version of Islandora",
     'arguments' => array(
       'csv_file' => 'The path to a csv file that contains columns as described in the description.',
       'datastream_id' => 'the id of the datastream to load',

@@ -4,7 +4,8 @@ function islandora_newspapers_drush_command() {
   $items = array();
 
   $items['islandora_ingest_newspapers'] = array(
-    'description' => "Creates the parent issue object and uploads the pages as child objects",
+    'description' => "Creates the parent issue object and uploads the pages as child objects.  
+      Requires the Drupal7 version of Islandora with tuque",
     'arguments' => array(
       'query_file' => 'The path to a CSV file that contains the information about the newspaper pages',
       'interactive' => 'if TRUE then you will be asked to confirm the update for each object',

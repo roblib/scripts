@@ -13,7 +13,8 @@ function islandora_update_metadata_from_xsl_drush_command() {
   $items = array();
 
   $items['islandora_update_metadata_from_xsl'] = array(
-    'description' => "Reads a list of pids from a text file and updates the MODS of that object using an xslt that crosswalks refworks xml to MODS",
+    'description' => "Reads a list of pids from a text file and updates the MODS of that object using an xslt that crosswalks refworks xml to MODS.  
+      Requires Drupal 6 version of Islandora",
     'arguments' => array(
       'list_file' => 'The path to a plain text file that contains alist of pids (one per line).',
       'xslt_file' => 'The path to an xslt that can transform refworks xml to MODS.  We may have different xsls depending on genre.',

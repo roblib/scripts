@@ -14,7 +14,8 @@ function islandora_gsearch_update_drush_command() {
   $items = array();
 
   $items['islandora_gsearch_update'] = array(
-    'description' => "updates a gsearch index using a list of pids genereated from an itql query.",
+    'description' => "updates a gsearch index using a list of pids genereated from an itql query  Currently 
+      relies on Drupal6 version of islandora.",
     'arguments' => array(
       'query_file' => 'The path to a plain text file that contains an itql query',
       'index_name' => 'the name of the index to update.',

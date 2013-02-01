@@ -18,7 +18,8 @@ function islandora_lowercase_hocr_drush_command() {
   $items = array();
 
   $items['islandora_lowercase_hocr'] = array(
-    'description' => "updates a books pages so the hocr datastream is all lower case",
+    'description' => "updates a books pages so the hocr datastream is all lower case.  
+      Currently relies on the Drupal6 version of Islandora",
     'arguments' => array(
       'query_file' => 'The path to a plain text file that contains an itql query.  This query should return a list of books (pids)',
       'interactive' => 'if TRUE then you will be asked to confirm the update for each book object'

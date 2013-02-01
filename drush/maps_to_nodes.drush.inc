@@ -7,12 +7,14 @@
    $items = array();
    $items['maps-to-nodes'] = array(
         'callback' => 'drush_maps_to_nodes',
-        'description' => "create nodes/entities from key fields from Map cmodel",
+        'description' => "create nodes/entities from key fields from Map cmodel.  
+          Requires Drupal7 version of Islandora with tuque",
         'aliases' => array('mapstonodes'),
         'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN, // we can pass in users id on the command line using drush -u.
         'arguments' => array(
             'query_file' => 'The full path to a file that contains an itql query',
-            'pid' => 'if TRUE then you will be asked to confirm the purge action for each object',
+            'pid' => 'Fedora PID of a collection.  Currently only used to get a relationship object.  
+              Should be refactored.',
         ),
         'examples' => array(
             'drush maps-to-nodes path/to/itql/textfile.txt',
