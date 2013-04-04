@@ -77,8 +77,8 @@ function islandora_update_csv_go($csv_file, $dsid, $interactive = FALSE) {
   while (($data = fgetcsv($fh)) !== FALSE) {
     if ($line_number++ > 0) {
       $pid = $data[0];
-      $u1 = $data[2];
-      $u2 = $data[3];
+      //$u1 = $data[1];
+      //$u2 = $data[2];
       if ($interactive == 'TRUE') {
         if (drush_confirm(dt('update this @pid ?', array('@pid' => $pid)))) {
           //$item = new Fedora_Item($object);
@@ -126,7 +126,7 @@ function islandora_update_datastream_from_csv($pid, $dsid, $data) {
   $elements = $sxml->xpath('//ns:identifier[@type="u1"]');
   $updated = FALSE;
   $exists = FALSE;
-  $new_str = $data[3];
+  $new_str = $data[1];
   foreach ($elements as $node) {
     $original_str = (string) $node;
     islandora_update_write_log(dt('processing %pid u1 field', array('%pid' => $pid)), 'islandora_update_from_csv.log');
@@ -145,7 +145,8 @@ function islandora_update_datastream_from_csv($pid, $dsid, $data) {
   //u2 = departments
   $elements = $sxml->xpath('//ns:identifier[@type="u2"]');
    
-  $new_strs = explode(';', $data[4]);
+  $new_strs = explode(';', $data[2]);
+ 
   $original_strs = array();
   $arr = array();
   foreach ($elements as $node) {

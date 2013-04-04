@@ -1,8 +1,7 @@
 <?php
 
 /*
- * This file should be put in the islandora modules plugins directory
- * typical usage: drush -u 1 
+ * 
  * 
  */
 
@@ -15,8 +14,11 @@ function islandora_update_departments_solr_drush_command() {
     'description' => "Reads a solr result set and updates the mods:identifier[@type='u2'] field.  This is specific to islandscholar.
        Currently requires Drupal6 Islandora",
     'arguments' => array(
-      'solr_file' => 'The path to a csv file that contains columns as described in the description.',
+      'solr_file' => 'The path to a file that contains a solr query.  This query should return a pids and a list of departments for this pid.  
+        This script is useful for getting a list of departments from refworks fields and upating the corresponding mods. For more general usage use 
+        islandora_update_from_csv script.  ',
       'datastream_id' => 'the id of the datastream to load',
+      'overwrite' => 'if TRUE we will delete existing departements first.  If FALSE we will leave existing departments alone and just new ones',
       'interactive' => 'if TRUE then you will be asked to confirm the update for each object',
     ),
     'examples' => array(
@@ -40,7 +42,7 @@ function islandora_update_departments_solr_drush_command() {
  * @param boolean $interactive
  * 
  */
-function drush_islandora_update_departments_solr_drush($solr_file, $dsid, $interactive) {
+function drush_islandora_update_departments_solr_drush($solr_file, $dsid, $overwrite, $interactive) {
   drush_print('Current working directory ' . getcwd());
   if (isset($solr_file)) {
     drush_print(" using solr  file" . $csv_file);
@@ -57,7 +59,7 @@ function drush_islandora_update_departments_solr_drush($solr_file, $dsid, $inter
     return;
   }
 
-  islandora_update_from_solr_go($solr_file, $dsid, $interactive);
+  islandora_update_from_solr_go($solr_file, $dsid, $overwrite, $interactive);
 }
 
 /**
@@ -68,7 +70,7 @@ function drush_islandora_update_departments_solr_drush($solr_file, $dsid, $inter
  * @param boolean $interactive
  * 
  */
-function islandora_update_from_solr_go($solr_file, $dsid, $interactive = FALSE) {
+function islandora_update_from_solr_go($solr_file, $dsid, $overwrite = FALSE, $interactive = FALSE) {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
   ini_set("auto_detect_line_endings", "1");
   $query_results = $query = file_get_contents($solr_file);
@@ -84,7 +86,7 @@ function islandora_update_from_solr_go($solr_file, $dsid, $interactive = FALSE) 
     }
     if ($interactive == 'TRUE') {
       if (drush_confirm(dt('update this @pid ?', array('@pid' => $pid)))) {
-        islandora_update_department($pid, $dsid, $depts);
+        islandora_update_department($pid, $dsid, $depts, $overwrite);
         drush_print("processed $pid # " . $line_number++);
         if (($line_number % 500) == 0) {
           drush_print('resting');
@@ -93,7 +95,7 @@ function islandora_update_from_solr_go($solr_file, $dsid, $interactive = FALSE) 
       }
     }
     else {
-      islandora_update_department($pid, $dsid, $depts);
+      islandora_update_department($pid, $dsid, $depts, $overwrite);
       drush_print("processed $pid # " . $line_number++);
       if (($line_number % 500) == 0) {
         drush_print('resting');
@@ -103,7 +105,7 @@ function islandora_update_from_solr_go($solr_file, $dsid, $interactive = FALSE) 
   }
 }
 
-function islandora_update_department($pid, $dsid, $depts) {
+function islandora_update_department($pid, $dsid, $depts, $overwrite) {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
   if (!isset($depts)) {
     islandora_update_write_log(dt('empty line'), 'islandora_update_department.log', 'error');
@@ -128,9 +130,11 @@ function islandora_update_department($pid, $dsid, $depts) {
 
   $elements = $sxml->xpath('//ns:identifier[@type="u2"]');
   //remove existing departments
-  foreach ($elements as $element) {
-    $dom = dom_import_simplexml($element);
-    $dom->parentNode->removeChild($dom);
+  if ($overwrite) {
+    foreach ($elements as $element) {
+      $dom = dom_import_simplexml($element);
+      $dom->parentNode->removeChild($dom);
+    }
   }
   // add new ones from file
   foreach ($depts as $dept) {
