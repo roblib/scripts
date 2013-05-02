@@ -17,7 +17,8 @@ function islandora_update_metadata_drush_command() {
       Requires the Drupal6 version of Islandora.  There is also a Drupal 7 version of this script.  If they are 
       both accessible to drush they may cause conflicts.",
     'arguments' => array(
-      'query_file' => 'The path to a plain text file that contains an itql query.  This query should return a list of pids.',
+      'query_file' => 'The path to a plain text file that contains an itql query or a list of pids.  If it is a query this query should return a list of pids.',
+      'is_query' => 'TRUE or FALSE, if true we will do an itql query to get a list of pids.  If FALSE then we will use the file as the list of pids',
       'substitution_text_file' => 'A text file that contains the values to be replaced and the values to update it with.
           This file should be formatted with each entry on a line of by itself such as "incorrect text ~ correct text" eg. "Path Micro ~ Pathology and Microbiology".',
       'datastream_id' => 'the id of the datastream to load',
@@ -26,7 +27,7 @@ function islandora_update_metadata_drush_command() {
       'interactive' => 'if TRUE then you will be asked to confirm the update for each object',
     ),
     'examples' => array(
-      'drush -u 1 --uri=http://137.149.200.19/scholardev islandoraum /var/www/html/drupal/sites/137.149.200.19.scholardev/files/query.txt /var/www/html/drupal/sites/department_update.txt MODS "//ns:identifier[@type=\'u2\']" http://www.loc.gov/mods/v3 TRUE',
+      'drush -u 1 --uri=http://137.149.200.19/scholardev islandoraum /var/www/html/drupal/sites/137.149.200.19.scholardev/files/query.txt FALSE /var/www/html/drupal/sites/department_update.txt MODS "//ns:identifier[@type=\'u2\']" http://www.loc.gov/mods/v3 TRUE',
     ),
     'aliases' => array('islandoraum'),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN, // we can pass in users id on the command line using drush -u.
@@ -46,7 +47,7 @@ function islandora_update_metadata_drush_command() {
  * @param boolean $interactive
  * 
  */
-function drush_islandora_update_metadata($query_file, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive) {
+function drush_islandora_update_metadata($query_file, $is_query, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive) {
   drush_print('Current working directory ' . getcwd());
   if (isset($query_file)) {
     drush_print(" using query file" . $query_file);
@@ -65,7 +66,7 @@ function drush_islandora_update_metadata($query_file, $substitution_text_file, $
   if (isset($xpath)) {
     drush_print("using xpath " . $xpath);
   }
-  islandora_update_metadata_go($query_file, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive);
+  islandora_update_metadata_go($query_file, $is_query, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive);
 }
 
 /**
@@ -76,20 +77,23 @@ function drush_islandora_update_metadata($query_file, $substitution_text_file, $
  * @param boolean $interactive
  * 
  */
-function islandora_update_metadata_go($query_file, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive = FALSE) {
+function islandora_update_metadata_go($query_file, $is_query, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive = FALSE) {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
-  $query = file_get_contents($query_file);
   $substitution_text = file_get_contents($substitution_text_file);
-  if (!isset($query)) {
-    drush_die('no query found');
-    return;
-  }
   if (!isset($substitution_text)) {
     drush_die('no substitution text loaded');
     return;
   }
-  $results = islandora_update_run_query($query);
-  $objects = islandora_update_sparql_results_as_array($results);
+  $objects = array();
+  if ($is_query == 'TRUE') {
+    $query = file_get_contents($query_file);
+    $results = islandora_update_run_query($query);
+    $objects = islandora_update_sparql_results_as_array($results);
+  }
+  else {
+    ini_set("auto_detect_line_endings", true);
+    $objects = file($query_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+  }
   foreach ($objects as $object) {
     drush_print($object);
   }
@@ -149,13 +153,13 @@ function islandora_update_datastream($pid, $a_keys, $a_values, $dsid, $xpath, $n
 
   $item = new Fedora_Item($pid);
   if (!isset($item)) {
-    islandora_update_write_log(dt('error creating object %pid', array('%pid' => $pid)),'islandora_update.log','error');
+    islandora_update_write_log(dt('error creating object %pid', array('%pid' => $pid)), 'islandora_update.log', 'error');
   }
 
   $metadata = $item->get_datastream_dissemination($dsid);
   $sxml = simplexml_load_string($metadata);
   if (!$sxml) {
-    islandora_update_write_log(dt('error processing %pid', array('%pid' => $pid)),'islandora_update.log','error');
+    islandora_update_write_log(dt('error processing %pid', array('%pid' => $pid)), 'islandora_update.log', 'error');
     $item->forget();
     return;
   }
@@ -166,9 +170,9 @@ function islandora_update_datastream($pid, $a_keys, $a_values, $dsid, $xpath, $n
   $updated = FALSE;
   foreach ($elements as $node) {
     $original_str = (string) $node;
-    islandora_update_write_log(dt('processing %pid', array('%pid' => $pid)),'islandora_update.log');
+    islandora_update_write_log(dt('processing %pid', array('%pid' => $pid)), 'islandora_update.log');
     $new_str = str_replace($a_keys, $a_values, $original_str);
-    islandora_update_write_log(dt('original string = %org_string new string = %new_string', array('%org_string' => $original_str, '%new_string' => $new_str)),'islandora_update.log');
+    islandora_update_write_log(dt('original string = %org_string new string = %new_string', array('%org_string' => $original_str, '%new_string' => $new_str)), 'islandora_update.log');
     if (trim($new_str) != trim($original_str)) {
       $updated = TRUE;
       $node[0] = $new_str;
@@ -180,10 +184,10 @@ function islandora_update_datastream($pid, $a_keys, $a_values, $dsid, $xpath, $n
     if (isset($content))
       $value = $item->modify_datastream($content, $dsid, $dsid, 'text/xml', $force = FALSE, $logMessage = 'Modified by Islandora API using islandora_update_metadata drush script', TRUE);
     if (isset($value)) {
-      islandora_update_write_log(dt('successfully updated %dsid for %pid', array('%dsid' => $dsid, '%pid' => $pid)),'islandora_update.log');
+      islandora_update_write_log(dt('successfully updated %dsid for %pid', array('%dsid' => $dsid, '%pid' => $pid)), 'islandora_update.log');
     }
     else {
-      islandora_update_write_log(dt('error updating %dsid for %pid', array('%dsid' => $dsid, '%pid' => $pid)),'islandora_update.log', 'error');
+      islandora_update_write_log(dt('error updating %dsid for %pid', array('%dsid' => $dsid, '%pid' => $pid)), 'islandora_update.log', 'error');
     }
     time_nanosleep(0, 20000000);
   }
@@ -204,7 +208,7 @@ function islandora_update_run_query($query) {
     return $results;
   }
   else {
-    islandora_update_write_log('Error get related items, relationships cannot be updated','islandora_update.log','error');
+    islandora_update_write_log('Error get related items, relationships cannot be updated', 'islandora_update.log', 'error');
   }
 }
 
@@ -216,40 +220,39 @@ function islandora_update_run_query($query) {
  * @param string $logfile
  * @return type 
  */
-function islandora_update_write_log($message, $logfile='', $status='info') {
+function islandora_update_write_log($message, $logfile = '', $status = 'info') {
   // Determine log file
-  if($logfile == '') {
+  if ($logfile == '') {
     // checking if the constant for the log file is defined
     if (defined(DEFAULT_LOG) == TRUE) {
-        $logfile = DEFAULT_LOG;
+      $logfile = DEFAULT_LOG;
     }
     // the constant is not defined and there is no log file given as input
     else {
-        error_log('No log file defined!',0);
-        return array(status => false, message => 'No log file defined!');
+      error_log('No log file defined!', 0);
+      return array(status => false, message => 'No log file defined!');
     }
   }
- 
-  
-    $time = time(); 
- 
+
+
+  $time = time();
+
   // Format the date and time
   $date = date("Y-m-d H:i:s", $time);
- 
+
   // Append to the log file
-  if($fd = @fopen($logfile, "a")) {
+  if ($fd = @fopen($logfile, "a")) {
     $result = fputcsv($fd, array($status, $date, $message));
     fclose($fd);
- 
-    if($result > 0)
-      return array('status' => true);  
+
+    if ($result > 0)
+      return array('status' => true);
     else
-      return array('status' => false, message => 'Unable to write to '.$logfile.'!');
+      return array('status' => false, message => 'Unable to write to ' . $logfile . '!');
   }
   else {
-    return array('status' => false, message => 'Unable to open log '.$logfile.'!');
+    return array('status' => false, message => 'Unable to open log ' . $logfile . '!');
   }
 }
-
 
 ?>
