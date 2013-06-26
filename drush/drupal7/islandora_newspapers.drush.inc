@@ -22,6 +22,7 @@ function islandora_newspapers_drush_command() {
 }
 
 function drush_islandora_newspapers_islandora_ingest_newspapers($query_file, $interactive = FALSE, $reel_no = NULL) {
+  ini_set("auto_detect_line_endings", "1");
 
   $path_name = dirname($query_file);
   
