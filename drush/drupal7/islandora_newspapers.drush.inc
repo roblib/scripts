@@ -88,7 +88,7 @@ function create_book_object($data) {
 
   $dsid = 'MODS';
 
-  $content_model_pid = 'islandora:issueCModel';
+  $content_model_pid = 'islandora:newspaperIssueCModel';
 
   $collection_pid = 'newspapers:guardian';
   
