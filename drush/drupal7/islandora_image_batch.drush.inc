@@ -20,9 +20,10 @@ function islandora_image_batch_drush_command() {
       'collection' => 'the pid of the object that these will be related',
       'pid_namespace' => 'the pid namespace for the new objects',
       'cmodel' => 'the cmodel for the object',
+      'dsid' => 'the dsid for the datastream',
     ),
     'examples' => array(
-      'drush -u 1 --uri=http://137.149.200.19/scholardev islandoraib /home/user/dir/of/images/ image/png islandora:sp_basic_image_collection islandora islandora:sp_basic_image',
+      'drush -u 1 --uri=http://137.149.200.19/scholardev islandoraib /home/user/dir/of/images/ image/png islandora:sp_basic_image_collection islandora islandora:sp_basic_image TIFF',
     ),
     'aliases' => array('islandoraib'),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN, // we can pass in users id on the command line using drush -u.
@@ -42,36 +43,42 @@ function islandora_image_batch_drush_command() {
  * @param boolean $interactive
  * 
  */
-function drush_islandora_image_batch($directory, $mimetype = 'image/jpeg', $collection = 'islandora:sp_basic_image_collection', $pid_namespace = 'islandora', $cmodel = 'islandora:sp_basic_image') {
+function drush_islandora_image_batch($directory, $mimetype = 'image/jpeg'
+, $collection = 'islandora:sp_basic_image_collection', $pid_namespace = 'islandora'
+, $cmodel = 'islandora:sp_basic_image', $dsid = 'OBJ') {
   drush_print('Current working directory ' . getcwd());
   if (isset($directory)) {
     drush_print(" using directory" . $directory);
   }
-  islandora_image_batch_go($directory, $mimetype, $collection, $pid_namespace, $cmodel);
+  islandora_image_batch_go($directory, $mimetype, $collection
+      , $pid_namespace, $cmodel, $dsid);
 }
 
 /**
  * Iterates through all the files that match the given mimetype
  *
  */
-function islandora_image_batch_go($directory, $mimetype, $collection, $pid_namespace, $cmodel) {
+function islandora_image_batch_go($directory, $mimetype, $collection
+, $pid_namespace, $cmodel, $dsid) {
   $files = scandir($directory);
   foreach ($files as $file) {
     if (mime_content_type($directory . '/' . $file) == $mimetype) {
-      islandora_image_batch_ingest($directory, $file, $mimetype, $collection, $pid_namespace, $cmodel);
+      islandora_image_batch_ingest($directory, $file, $mimetype, $collection
+          , $pid_namespace, $cmodel, $dsid);
     }
   }
 }
 
-function islandora_image_batch_ingest($directory, $file, $mimetype, $collection, $pid_namespace, $cmodel) {
+function islandora_image_batch_ingest($directory, $file, $mimetype, $collection
+, $pid_namespace, $cmodel, $dsid) {
   $connection = islandora_get_tuque_connection();
   $repository = $connection->repository;
   $pid = $repository->api->m->getNextPid($pid_namespace);
   $object = new NewFedoraObject($pid, $repository);
   $object->label = $file;
-  $obj_datastream = new NewFedoraDatastream('OBJ', 'M', $object, $repository);
+  $obj_datastream = new NewFedoraDatastream($dsid, 'M', $object, $repository);
   $obj_datastream->setContentFromFile($directory . '/' . $file, FALSE);
-  $obj_datastream->label = 'OBJ';
+  $obj_datastream->label = $dsid;
   $obj_datastream->mimetype = $mimetype;
   $obj_datastream->checksum = TRUE;
   $obj_datastream->checksumType = 'MD5';

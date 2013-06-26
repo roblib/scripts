@@ -231,7 +231,7 @@ function create_page_object($file_path, $data, $reel_number, $collection_pid) {
 
   $dsid = 'MODS';
 
-  $content_model_pid = 'islandora:pageCModel';
+  //$content_model_pid = 'islandora:newspaperPageCModel';
 
   $xml = <<<PAGEMODS
 <?xml version="1.0" encoding="UTF-8"?>
@@ -265,12 +265,12 @@ PAGEMODS;
   $rdf_string = <<<RDF
 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:fedora="info:fedora/fedora-system:def/relations-external#" xmlns:fedora-model="info:fedora/fedora-system:def/model#" xmlns:islandora="http://islandora.ca/ontology/relsext#">
 <rdf:Description rdf:about="info:fedora/$pid">
-        <fedora-model:hasModel xmlns="info:fedora/fedora-system:def/model#" rdf:resource="info:fedora/islandora:pageCModel"></fedora-model:hasModel>
-        <fedora:isSequenceNumber xmlns="http://islandora.ca/ontology/relsext#">$page_number_short</fedora:isSequenceNumber>
-        <fedora:isMemberOf xmlns="info:fedora/fedora-system:def/relations-external#" rdf:resource="info:fedora/$collection_pid"></fedora:isMemberOf>
-        <fedora:isSection xmlns="http://islandora.ca/ontology/relsext#">1</fedora:isSection>
-        <fedora:isPageOf xmlns="http://islandora.ca/ontology/relsext#" rdf:resource="inf:fedora/$collection_pid"></fedora:isPageOf>
-        <fedora:isPageNumber xmlns="http://islandora.ca/ontology/relsext#">$page_number_short</fedora:isPageNumber>
+        <hasModel xmlns="info:fedora/fedora-system:def/model#" rdf:resource="info:fedora/islandora:newspaperPageCModel"></hasModel>
+        <isSequenceNumber xmlns="http://islandora.ca/ontology/relsext#">$page_number_short</isSequenceNumber>
+        <isMemberOf xmlns="info:fedora/fedora-system:def/relations-external#" rdf:resource="info:fedora/$collection_pid"></isMemberOf>
+        <isSection xmlns="http://islandora.ca/ontology/relsext#">1</fedora:isSection>
+        <isPageOf xmlns="http://islandora.ca/ontology/relsext#" rdf:resource="inf:fedora/$collection_pid"></isPageOf>
+        <isPageNumber xmlns="http://islandora.ca/ontology/relsext#">$page_number_short</isPageNumber>
 </rdf:Description>
 </rdf:RDF>
 RDF;
