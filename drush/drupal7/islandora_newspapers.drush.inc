@@ -127,6 +127,8 @@ BOOKMODS;
   <rdf:Description rdf:about="info:fedora/$pid">
     <fedora-model:hasModel rdf:resource="info:fedora/$content_model_pid"></fedora-model:hasModel>
     <fedora:isMemberOfCollection rdf:resource="info:fedora/$collection_pid"></fedora:isMemberOfCollection>
+      <islandora:isIssueOf rdf:resource="info:fedora/newspapers:guardian"></islandora:isIssueOf>
+       <islandora:dateIssued rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">$iso_date</islandora:dateIssued>
   </rdf:Description>
 </rdf:RDF>
 BOOKRDF;
@@ -266,12 +268,12 @@ PAGEMODS;
   $rdf_string = <<<RDF
 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:fedora="info:fedora/fedora-system:def/relations-external#" xmlns:fedora-model="info:fedora/fedora-system:def/model#" xmlns:islandora="http://islandora.ca/ontology/relsext#">
 <rdf:Description rdf:about="info:fedora/$pid">
-        <hasModel xmlns="info:fedora/fedora-system:def/model#" rdf:resource="info:fedora/islandora:newspaperPageCModel"></hasModel>
-        <isSequenceNumber xmlns="http://islandora.ca/ontology/relsext#">$page_number_short</isSequenceNumber>
-        <isMemberOf xmlns="info:fedora/fedora-system:def/relations-external#" rdf:resource="info:fedora/$collection_pid"></isMemberOf>
-        <isSection xmlns="http://islandora.ca/ontology/relsext#">1</fedora:isSection>
-        <isPageOf xmlns="http://islandora.ca/ontology/relsext#" rdf:resource="inf:fedora/$collection_pid"></isPageOf>
-        <isPageNumber xmlns="http://islandora.ca/ontology/relsext#">$page_number_short</isPageNumber>
+        <fedora-model:hasModel rdf:resource="info:fedora/islandora:newspaperPageCModel"></fedora-model:hasModel>
+        <islandora:isSequenceNumber>$page_number_short</islandora:isSequenceNumber>
+        <fedora:isMemberOf rdf:resource="info:fedora/$collection_pid"></fedora:isMemberOf>
+        <islandora:isSection>1</islandora:isSection>
+        <islandora:isPageOf rdf:resource="inf:fedora/$collection_pid"></islandora:isPageOf>
+        <islandora:isPageNumber>$page_number_short</islandora:isPageNumber>
 </rdf:Description>
 </rdf:RDF>
 RDF;
