@@ -311,13 +311,13 @@ RDF;
 
   $object->ingestDatastream($mods_datastream);
   
-  $image_datastream = new NewFedoraDatastream('TIFF', 'M', $object, $connection->repository);
+  $image_datastream = new NewFedoraDatastream('OBJ', 'M', $object, $connection->repository);
   $image_datastream->setContentFromFile($file_name, FALSE);
   $image_datastream->label = 'TIFF image';
   $image_datastream->mimetype = 'image/tiff';
   $image_datastream->checksum = TRUE;
   $image_datastream->checksumType = 'MD5';
-  $image_datastream->logMessage = 'TIFF datastream created using Newspapers batch ingest script || SUCCESS';
+  $image_datastream->logMessage = 'OBJ datastream created using Newspapers batch ingest script || SUCCESS';
   
   $object->ingestDatastream($image_datastream);
   
