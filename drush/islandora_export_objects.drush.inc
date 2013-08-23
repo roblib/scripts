@@ -20,10 +20,11 @@ function islandora_export_objects_drush_command() {
       Currently relies on the Drupal 6 version of Islandora",
     'arguments' => array(
       'query_file' => 'The path to a plain text file that contains an itql query',
+      'type' => 'the type of export migrate or archive',
       'interactive' => 'if TRUE then you will be asked to confirm the export for each object'
     ),
     'examples' => array(
-      'drush islandora_export_objects /path/to/query.txt TRUE',
+      'drush islandora_export_objects /path/to/query.txt archive TRUE',
     ),
     'aliases' => array('islandoraexp'),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN, // we can pass in users id on the command line using drush -u.
@@ -33,7 +34,7 @@ function islandora_export_objects_drush_command() {
 }
 
 //drush hook
-function drush_islandora_export_objects($query_file, $interactive) {
+function drush_islandora_export_objects($query_file, $type, $interactive) {
   drush_print('Current working directory ' . getcwd());
   $export_dir = getcwd();
 
@@ -44,7 +45,7 @@ function drush_islandora_export_objects($query_file, $interactive) {
     drush_print(" no query_file found");
     return;
   }
-  islandora_export_objects_doAction($query_file, $interactive);
+  islandora_export_objects_doAction($query_file, $type, $interactive);
 }
 
 /**
@@ -54,7 +55,7 @@ function drush_islandora_export_objects($query_file, $interactive) {
  * @param string $interactive
  * @return void
  */
-function islandora_export_objects_doAction($query_file, $interactive) {
+function islandora_export_objects_doAction($query_file, $type, $interactive) {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
   $query = file_get_contents($query_file);
   $location = drush_find_tmp();
@@ -81,7 +82,7 @@ function islandora_export_objects_doAction($query_file, $interactive) {
     foreach ($objects as $object) {
       if (drush_confirm(dt('export this  @pid ?', array('@pid' => $object)))) {
         $item = new Fedora_Item($object);
-        $foxml = $item->export_as_foxml('archive');
+        $foxml = $item->export_as_foxml($type);
         $file_name = str_replace(':', '-', $item->pid);
         $file_name = drush_find_tmp() . '/drush_export/' . $file_name . '.foxml';
         drush_print('saving file to ' . $file_name);
@@ -94,7 +95,7 @@ function islandora_export_objects_doAction($query_file, $interactive) {
   else {
     foreach ($objects as $object) {
       $item = new Fedora_Item($object);
-      $foxml = $item->export_as_foxml('archive');
+      $foxml = $item->export_as_foxml($type);
       $file_name = str_replace(':', '-', $item->pid);
       $file_name = drush_find_tmp() . '/drush_export/' . $file_name . '.foxml';
       drush_print('saving file to ' . $file_name);
