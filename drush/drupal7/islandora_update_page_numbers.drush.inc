@@ -100,6 +100,11 @@ function islandora_update_pages_go($csv_file, $interactive = FALSE) {
 
 function islandora_drush_update_page_rels($parent_pid) {
   $parent_object = islandora_object_load($parent_pid);
+  if(empty($parent_object)){
+    drush_print("no object found for pid $parent_pid");
+    return;
+  }
+    
   $pages = islandora_basic_collection_get_objects($parent_object);
   unset($parent_object);
   //limit actions while testing
