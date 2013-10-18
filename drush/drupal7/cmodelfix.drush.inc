@@ -117,7 +117,7 @@ function drush_cmodelfix_fix_them($file, $old_cmodel_pid, $new_cmodel_pid, $inte
               if (drush_cmodel_find_fixes($object, $old_cmodel_pid)) {
                 if (drush_confirm(dt('@newlineUpdate relationship for object @pid from@newline@old to @new',
                   array('@newline' => "\n", '@pid' => $pid, '@old' => $old_cmodel_pid, '@new' => $new_cmodel_pid)))) {
-                    drush_cmodel_fix($pid, $object, $old_cmodel_pid, $new_cmodel_pid);
+                    drush_cmodel_fix($object, $old_cmodel_pid, $new_cmodel_pid);
                 }
                 else {
                     drush_print("Skipping update on: $pid");
@@ -141,7 +141,7 @@ function drush_cmodelfix_fix_them($file, $old_cmodel_pid, $new_cmodel_pid, $inte
           }
           else {
             if (drush_cmodel_find_fixes($object, $old_cmodel_pid)) {
-              drush_cmodel_fix($pid, $object, $old_cmodel_pid, $new_cmodel_pid);
+              drush_cmodel_fix($object, $old_cmodel_pid, $new_cmodel_pid);
             }
           }
         }
