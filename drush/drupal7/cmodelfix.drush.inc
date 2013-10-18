@@ -15,7 +15,6 @@
 function cmodelfix_drush_command() {
 
   $items = array();
-
   $items['fix-them'] = array(
     'description' => "Simple Drush script which accepts a list of PIDs in a text file to update the RELS-EXT hasModel relationship.",
     'arguments' => array(
@@ -87,73 +86,59 @@ function drush_cmodelfix_fix_them($file, $old_cmodel_pid, $new_cmodel_pid, $inte
         if ($interactive) {
           if ($mode == "DELETE") {
             if (drush_confirm(dt('@newlineSearch for relationship to delete on object @pid', array('@newline' => "\n", '@pid' => $pid)))) {
-
               // Search for cmodel fix and continue if match found.
               if (drush_cmodel_find_fixes($pid, $object, $old_cmodel_pid)) {
                 if (drush_confirm(dt('@newlineDelete relationship @old for object @pid',
                   array('@newline' => "\n", '@pid' => $pid, '@old' => $old_cmodel_pid)))) {
                   drush_cmodel_delete ($object, $old_cmodel_pid);
                 }
-
                 else {
                   drush_print("Skipping deletion of $pid");
                 }
               }
             }
-
             else {
               drush_print("\nSkipping search for $pid");
             }
-
           }
-
           elseif ($mode == "ADD") {
 
             if (drush_confirm(dt('@newlineAdd relationship @new for object @pid',
                  array('@newline' => "\n", '@pid' => $pid, '@new' => $new_cmodel_pid)))) {
               drush_cmodel_add ($object, $new_cmodel_pid);
             }
-
             else {
                 drush_print("$new_cmodel_pid relationship NOT added to $pid");
               }
           }
-
           else {
-
             if (drush_confirm(dt('@newlineSearch for required update on object @pid', array('@newline' => "\n", '@pid' => $pid)))) {
-
               // Search for cmodel fix and continue if match found.
               if (drush_cmodel_find_fixes($pid, $object, $old_cmodel_pid)) {
                 if (drush_confirm(dt('@newlineUpdate relationship for object @pid from@newline@old to @new',
                   array('@newline' => "\n", '@pid' => $pid, '@old' => $old_cmodel_pid, '@new' => $new_cmodel_pid)))) {
                     drush_cmodel_fix($pid, $object, $old_cmodel_pid, $new_cmodel_pid);
                 }
-
                 else {
                     drush_print("Skipping update on: $pid");
                 }
               }
             }
-
             else {
                 drush_print("\nSkipping search for fix on: $pid");
             }
           }
         }
-
         else {
           // Auto mode.
           if ($mode == "ADD") {
 
           }
-
           elseif ($mode == "DELETE") {
             if (drush_cmodel_find_fixes($pid, $object, $old_cmodel_pid)) {
               drush_cmodel_delete($object, $old_cmodel_pid);
             }
           }
-
           else {
             if (drush_cmodel_find_fixes($pid, $object, $old_cmodel_pid)) {
               drush_cmodel_fix($pid, $object, $old_cmodel_pid, $new_cmodel_pid);
@@ -171,11 +156,9 @@ function drush_cmodelfix_fix_them($file, $old_cmodel_pid, $new_cmodel_pid, $inte
     if ($mode == "DELETE") {
       drush_print("\nCModelFix complete.\n\n***************\n    Found: " . $GLOBALS['fixesFound'] . "\n  Deleted: " . $GLOBALS['fixesMade'] . "\n***************\n");
     }
-
     elseif ($mode == "ADD") {
       drush_print("\nCModelFix complete.\n\n***************\n    Added: " . $GLOBALS['fixesMade'] . "\n***************\n");
     }
-
     else {
       drush_print("\nCModelFix complete.\n\n*************\n  Found: " . $GLOBALS['fixesFound'] . "\n  Fixed: " . $GLOBALS['fixesMade'] . "\n*************\n");
     }
@@ -195,40 +178,34 @@ function drush_cmodel_find_fixes($pid, $object, $old_cmodel_pid) {
   $no_match = 0;
 
   foreach ($rels as $rel) {
-
     if (isset($rel['object']['value'])) {
-
       if ($rel['object']['value'] == $old_cmodel_pid) {
         drush_print("\n>>> MATCH FOUND >>> Relationship matching \"$old_cmodel_pid\" was found on object $pid");
         $fix_found = TRUE;
         $GLOBALS['fixesFound']++;
       }
-
-
       else {
         $no_match++;
         //$fix_found ? TRUE : FALSE;
       }
-
     }
     else {
       drush_print("\nNo relationships found for object $pid.");
     }
   }
 
-  if (!$fix_found AND $no_match > 0)
+  if (!$fix_found AND $no_match > 0) {
     $message = "\nNo relationship matching \"$old_cmodel_pid\" was found on object $pid";
-  elseif ($fix_found AND $no_match > 0)
+  }
+  elseif ($fix_found AND $no_match > 0) {
      $message = ">>> Other relationship(s) not matching \"$old_cmodel_pid\" were also found.";
-  //else
-  //    $message = "DUNNO!";
-
-
+  }
 
   //drush_print("nomatch: " . $no_match);
 
-  if ($message)
+  if ($message) {
     drush_print($message);
+  }
 
   return $fix_found;
 }
@@ -248,9 +225,7 @@ function drush_cmodel_fix($pid, $object, $old_cmodel_pid, $new_cmodel_pid) {
 
 function drush_cmodel_add ($object, $new_cmodel_pid) {
 
-
   try {
-    //$object->relationships->remove('info:fedora/fedora-system:def/model#', 'hasModel', $old_cmodel_pid);
     $object->relationships->add('info:fedora/fedora-system:def/model#', 'hasModel', $new_cmodel_pid);
     drush_print("\n>>> RELATIONSHIP ADDED >>> $object->id");
     $GLOBALS['fixesMade']++;
@@ -258,8 +233,6 @@ function drush_cmodel_add ($object, $new_cmodel_pid) {
   catch (Exception $e) {
     drush_print ("Addition failed for: $pid \n\n$e->getMessage()");
   }
-
-
 }
 
 function drush_cmodel_delete ($object, $old_cmodel_pid) {
