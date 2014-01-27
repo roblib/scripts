@@ -272,7 +272,7 @@ PAGEMODS;
         <islandora:isSequenceNumber>$page_number_short</islandora:isSequenceNumber>
         <fedora:isMemberOf rdf:resource="info:fedora/$collection_pid"></fedora:isMemberOf>
         <islandora:isSection>1</islandora:isSection>
-        <islandora:isPageOf rdf:resource="inf:fedora/$collection_pid"></islandora:isPageOf>
+        <islandora:isPageOf rdf:resource="info:fedora/$collection_pid"></islandora:isPageOf>
         <islandora:isPageNumber>$page_number_short</islandora:isPageNumber>
 </rdf:Description>
 </rdf:RDF>
