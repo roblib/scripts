@@ -19,7 +19,7 @@ function islandora_export_objects_drush_command() {
     'description' => "exports foxml for each object returned by a query, files will be located in the sites temp dir.
       Currently relies on the Drupal 6 version of Islandora",
     'arguments' => array(
-      'query_file' => 'The path to a plain text file that contains an itql query',
+      'query_file' => 'The path to a plain text file that contains a list of pids',
       'type' => 'the type of export migrate or archive',
       'interactive' => 'if TRUE then you will be asked to confirm the export for each object'
     ),
@@ -57,20 +57,18 @@ function drush_islandora_export_objects($query_file, $type, $interactive) {
  */
 function islandora_export_objects_doAction($query_file, $type, $interactive) {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
-  $query = file_get_contents($query_file);
+  ini_set("auto_detect_line_endings", "1");
+  $objects = file($query_file);
   $location = drush_find_tmp();
   drush_print('files are located in ' . $location);
-  drush_print($query);
-  if (!isset($query)) {
-    drush_die('no query found');
+  //drush_print($objects);
+  if (!isset($objects)) {
+    drush_die('no objects found');
     return;
   }
-  $results = islandora_export_objects_run_query($query);
-  $objects = islandora_export_sparql_results_as_array($results);
   foreach ($objects as $object) {
     drush_print($object);
   }
-  //drush_print("are you sure you want to delete ".count($objects)." objects");
   $num = count($objects);
   if (!drush_confirm(dt('are you sure you want to export @num objects?', array('@num' => $num)))) {
     // was: return drush_set_error('CORE_SYNC_ABORT', 'Aborting.');
@@ -81,26 +79,30 @@ function islandora_export_objects_doAction($query_file, $type, $interactive) {
   if ($interactive == 'TRUE') {
     foreach ($objects as $object) {
       if (drush_confirm(dt('export this  @pid ?', array('@pid' => $object)))) {
-        $item = new Fedora_Item($object);
+        $item = new Fedora_Item(trim($object));
         $foxml = $item->export_as_foxml($type);
         $file_name = str_replace(':', '-', $item->pid);
         $file_name = drush_find_tmp() . '/drush_export/' . $file_name . '.foxml';
         drush_print('saving file to ' . $file_name);
         file_put_contents($file_name, $foxml);
-        $item->forget(); //on some vre2 sites this function does not exist
+        if(method_exists($item, 'forget')){
+          $item->forget(); //on some vre2 sites this function does not exist
+        }
         unset($item);
       }
     }
   }
   else {
     foreach ($objects as $object) {
-      $item = new Fedora_Item($object);
+      $item = new Fedora_Item(trim($object));
       $foxml = $item->export_as_foxml($type);
       $file_name = str_replace(':', '-', $item->pid);
       $file_name = drush_find_tmp() . '/drush_export/' . $file_name . '.foxml';
       drush_print('saving file to ' . $file_name);
       file_put_contents($file_name, $foxml);
-      $item->forget();
+      if(method_exists($item, 'forget')){
+        $item->forget(); //on some vre2 sites this function does not exist
+      }
       unset($item);
     }
   }
