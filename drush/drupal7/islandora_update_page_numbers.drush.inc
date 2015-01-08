@@ -8,14 +8,13 @@
 
 //drush hook
 
-function islandora_update_broken_page_numbers_drush_command() {
+function islandora_update_page_numbers_drush_command() {
   $items = array();
 
-  $items['update_pages'] = array(
-    'description' => "Reads a csv file first column is pid.  
+  $items['islandora_update_page_numbers'] = array(
+    'description' => "Reads a file containing a list of pids.  One pid per line.
       Currently requires Drupal7 Islandora with Tuque.  
-      Each pid in the txt/csv file should represent a book or newspaper (the script looks up the pages base on the parent newspaper or book).  
-      This is pretty specific to UPEI's newspapers right now)",
+      Each pid in the txt/csv file should represent a book or newspaper.",
     'arguments' => array(
       'csv_file' => 'The path to a csv file that contains columns as described in the description.',
       'interactive' => 'if TRUE then you will be asked to confirm the update for each object',
@@ -34,14 +33,14 @@ function islandora_update_broken_page_numbers_drush_command() {
  * This is the drush command specified in the array create by the drush entry point.
  * 
  * This function checks to make sure parameters are supplied and if everything is ok
- * calls the doAction function
+ * calls the go function
  * 
  * @param string $query_file
  *  path to a text file that contains an itql query
  * @param boolean $interactive
  * 
  */
-function drush_islandora_update_page_numbers_update_pages($csv_file, $interactive) {
+function drush_islandora_update_page_numbers($csv_file, $interactive) {
   drush_print('Current working directory ' . getcwd());
   if (isset($csv_file)) {
     drush_print(" using csv file" . $csv_file);
@@ -54,11 +53,15 @@ function drush_islandora_update_page_numbers_update_pages($csv_file, $interactiv
 }
 
 /**
- * Iterates through all the objects returned by the itql query and updates the mods stream
+ * Reads each line of a file for a pid.
+ *
+ * Then calls the update rels functioin
  * 
  * @param string $csv_file
+ *   A file with a list of pids one pid per line
  * @param boolean $interactive
- * @param string $action
+ *   If true the script will prompt before updating the pages in a book.  This
+ * only prompts at the book level not the page level.
  * 
  */
 function islandora_update_pages_go($csv_file, $interactive = FALSE) {
@@ -104,30 +107,39 @@ function islandora_drush_update_page_rels($parent_pid) {
     drush_print("no object found for pid $parent_pid");
     return;
   }
-    
-  $pages = islandora_basic_collection_get_objects($parent_object);
-  unset($parent_object);
+  module_load_include('inc', 'islandora_basic_collection', 'includes/utilities');
+  $pages = islandora_basic_collection_get_child_pids($parent_object);
+
   //limit actions while testing
   //$count = 0;
   foreach ($pages as $page) {
-    //var_dump($page);
-    //$count++;
-   // if($count > 1){
-   //   return;
-   // }
-    $page_number = trim(substr($page['title']['value'],4));
-    //var_dump($page_number);
-    //we make a big assumption here THAT every page has a title like "Page 3"
-    //for UPEI the titles are Page 1, Page 2 etc so this works but will not work 
-    //if the titles don't sort as expected.
-    drush_print("processing rels of page # " . $page['object']['value']);
-    $page_object = islandora_object_load($page['object']['value']);
-    //$pid = $page_object->id;
-    $page_object->relationships->remove('http://islandora.ca/ontology/relsext#', 'isSequenceNumber');
-    $page_object->relationships->remove("http://islandora.ca/ontology/relsext#", 'isPageNumber');
-    $page_object->relationships->add("http://islandora.ca/ontology/relsext#", 'isPageNumber', $page_number, TRUE);
-    $page_object->relationships->add("http://islandora.ca/ontology/relsext#", 'isSequenceNumber', $page_number, TRUE);
-    
+
+
+    drush_print("processing rels of page # " . $page);
+    $page_object = islandora_object_load($page);
+    $page_number_arr = $page_object->relationships->get("info:islandora/islandora-system:def/pageinfo#", 'isPageNumber');
+    if(empty($page_number_arr)){
+      // This script may have already been run and updated the isPageNumber namespace so we'll try with the new namespace
+      $page_number_arr = $page_object->relationships->get("http://islandora.ca/ontology/relsext#", 'isPageNumber');
+    }
+    $page_number = $page_number_arr[0]['object']['value'];
+    drush_print("processing page number $page_number ");
+
+    //remove old relationships that may not be using literals and old namespaces
+    //if (drush_confirm(dt('update this @pid ?', array('@pid' => $page)))) {
+      $page_object->relationships->remove('info:islandora/islandora-system:def/pageinfo#', 'isSequenceNumber');
+      $page_object->relationships->remove("info:islandora/islandora-system:def/pageinfo#", 'isPageNumber');
+      $page_object->relationships->remove("info:islandora/islandora-system:def/pageinfo#", 'isPageOf');
+      $page_object->relationships->remove('http://islandora.ca/ontology/relsext#', 'isSequenceNumber');
+      $page_object->relationships->remove("http://islandora.ca/ontology/relsext#", 'isPageNumber');
+      $page_object->relationships->remove("http://islandora.ca/ontology/relsext#", 'isPageOf');
+      $page_object->relationships->remove("http://islandora.ca/ontology/relsext#", 'hasLanguage');
+      $page_object->relationships->add("http://islandora.ca/ontology/relsext#", 'isPageNumber', $page_number, TRUE);
+      $page_object->relationships->add("http://islandora.ca/ontology/relsext#", 'isSequenceNumber', $page_number, TRUE);
+      $page_object->relationships->add("http://islandora.ca/ontology/relsext#", "hasLanguage", "eng", TRUE);
+      $page_object->relationships->add("http://islandora.ca/ontology/relsext#", "isPageOf", $parent_pid,false);
+    //}
+    unset($parent_object);
     unset($page_object);
   }
 }

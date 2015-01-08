@@ -18,7 +18,7 @@ function islandora_purge_pids_drush_command() {
       You will have to use the drush -u switch or you may not have permission to purge some objects.
         Currently relies on the Drupal6 version of Islandora.",
     'arguments' => array(
-      'query_file' => 'The pid of the collection object',
+      'query_file' => 'an itql query',
       'interactive' => 'if TRUE then you will be asked to confirm the purge action for each object'
     ),
     'examples' => array(
