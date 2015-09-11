@@ -8,6 +8,7 @@
  */
 
 //drush hook
+define(UPDATE_LOGFILE, '/tmp/islandora_update.log');
 
 function islandora_update_metadata_drush_command() {
   $items = array();
@@ -15,7 +16,7 @@ function islandora_update_metadata_drush_command() {
   $items['islandora_update_metadata'] = array(
     'description' => "scans the supplied datastream for fields with certain values and corrects known errors, this version requires drupal7 islandora",
     'arguments' => array(
-      'query_file' => 'The path to a plain text file that contains an itql query.  This query should return a list of pids.',
+      'pids_file' => 'The path to a plain text file that contains a list of pids.  One pid per line',
       'substitution_text_file' => 'A text file that contains the values to be replaced and the values to update it with.
           This file should be formatted with each entry on a line of by itself such as "incorrect text ~ correct text" eg. "Path Micro ~ Pathology and Microbiology".',
       'datastream_id' => 'the id of the datastream to load',
@@ -44,13 +45,13 @@ function islandora_update_metadata_drush_command() {
  * @param boolean $interactive
  * 
  */
-function drush_islandora_update_metadata($query_file, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive) {
+function drush_islandora_update_metadata($pids_file, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive) {
   drush_print('Current working directory ' . getcwd());
-  if (isset($query_file)) {
-    drush_print(" using query file" . $query_file);
+  if (isset($pids_file)) {
+    drush_print(" using file" . $pids_file);
   }
   else {
-    drush_print(" no query_file found");
+    drush_print(" no pids file found");
     return;
   }
   if (isset($substitution_text_file)) {
@@ -63,7 +64,7 @@ function drush_islandora_update_metadata($query_file, $substitution_text_file, $
   if (isset($xpath)) {
     drush_print("using xpath " . $xpath);
   }
-  islandora_update_metadata_go($query_file, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive);
+  islandora_update_metadata_go($pids_file, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive);
 }
 
 /**
@@ -74,41 +75,33 @@ function drush_islandora_update_metadata($query_file, $substitution_text_file, $
  * @param boolean $interactive
  * 
  */
-function islandora_update_metadata_go($query_file, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive = FALSE) {
+function islandora_update_metadata_go($pids_file, $substitution_text_file, $datastream_id, $xpath, $namespace, $interactive = FALSE) {
   module_load_include('inc', 'fedora_repository', 'api/fedora_item');
-  $query = file_get_contents($query_file);
+  $object_pids = file($pids_file);
   $substitution_text = file_get_contents($substitution_text_file);
   global $user;
-  $tuque = islandora_get_tuque_connection($user);
-  $repository = $tuque->repository;
-  if (!isset($query)) {
-    drush_die('no query found');
-    return;
-  }
+  
   if (!isset($substitution_text)) {
     drush_die('no substitution text loaded');
     return;
   }
-  //$results = islandora_update_run_query($query);
-  $results = $repository->ri->itqlQuery($query);
-  $objects = islandora_update_sparql_results_as_array($results);
-  foreach ($objects as $object) {
+  
+  foreach ($object_pids as $object) {
     drush_print($object);
   }
-  $num = count($objects);
+  $num = count($object_pids);
   if (!drush_confirm(dt('are you sure you want to update all @num objects?', array('@num' => $num)))) {
-    // was: return drush_set_error('CORE_SYNC_ABORT', 'Aborting.');
     drush_die('Aborting.');
   }
-  $arr = islandora_build_substitution_list($substitution_text);
+  $arr = islandora_solr_build_substitution_list($substitution_text);
   $a_keys = array_keys($arr);
   $a_values = array_values($arr);
   $count = 0;
   if ($interactive == 'TRUE') {
-    foreach ($objects as $object) {
-      if (drush_confirm(dt('update departments in this @pid ?', array('@pid' => $object)))) {
+    foreach ($object_pids as $object) {
+      if (drush_confirm(dt('update @datastream_id in this @pid ?', array('@datastream_id' => $datastream_id, '@pid' => $object)))) {
         //$item = new Fedora_Item($object);
-        islandora_update_datastream($object, $a_keys, $a_values, $datastream_id, $xpath, $namespace);
+        islandora_update_metadata_update_datastream($object, $a_keys, $a_values, $datastream_id, $xpath, $namespace);
         drush_print("processed $object # " . $count++);
       }
     }
@@ -116,26 +109,12 @@ function islandora_update_metadata_go($query_file, $substitution_text_file, $dat
   else {
     foreach ($objects as $object) {
       //$item = new Fedora_Item($object);
-      islandora_update_datastream($object, $a_keys, $a_values, $datastream_id, $xpath, $namespace);
+      islandora_update_metadata_update_datastream($object, $a_keys, $a_values, $datastream_id, $xpath, $namespace);
       drush_print("processed $object # " . $count++);
     }
   }
 }
 
-/**
- * returns an array of pids 
- * @todo pull this up into an api
- * @param SimpleXMLElement $content
- * @return array
- */
-function islandora_update_sparql_results_as_array($results) {
-  $resultsarray = array();
-  foreach($results as $result){
-   // var_dump($result);
-    $resultsarray[] = $result['object']['value'];
-  }
-  return $resultsarray;
-}
 
 /**
  * update all the objects
@@ -143,19 +122,19 @@ function islandora_update_sparql_results_as_array($results) {
  * @param string $pid
  * 
  */
-function islandora_update_datastream($pid, $a_keys, $a_values, $dsid, $xpath, $namespace) {
-  
+function islandora_update_metadata_update_datastream($pid, $a_keys, $a_values, $dsid, $xpath, $namespace) {
+  $pid = trim($pid);
   $item = islandora_object_load($pid);
-  if (!isset($item)) {
-    islandora_update_write_log(dt('error creating object %pid', array('%pid' => $pid)),'islandora_update.log','error');
+  if (!$item) {
+    islandora_update_metadata_write_log(dt('error loading object @pid', array('@pid' => $pid)),UPDATE_LOGFILE,'error');
+    return;
   }
   
   $metadata = $item[$dsid]->content;
   $sxml = simplexml_load_string(trim($metadata));
-  $test = $sxml->asXML();
   
-  if ($sxml == FALSE) {
-    islandora_update_write_log(dt('error processing %pid', array('%pid' => $pid)),'islandora_update.log','error');
+  if ($sxml === FALSE) {
+    islandora_update_metadata_write_log(dt('error processing @pid', array('@pid' => $pid)),UPDATE_LOGFILE,'error');
     unset($item);
     return;
   }
@@ -166,9 +145,9 @@ function islandora_update_datastream($pid, $a_keys, $a_values, $dsid, $xpath, $n
   $updated = FALSE;
   foreach ($elements as $node) {
     $original_str = (string) $node;
-    islandora_update_write_log(dt('processing %pid', array('%pid' => $pid)),'islandora_update.log');
+    islandora_update_metadata_write_log(dt('processing @pid', array('@pid' => $pid)),UPDATE_LOGFILE);
     $new_str = str_replace($a_keys, $a_values, $original_str);
-    islandora_update_write_log(dt('original string = %org_string new string = %new_string', array('%org_string' => $original_str, '%new_string' => $new_str)),'islandora_update.log');
+    islandora_update_metadata_write_log(dt('original string = @org_string, new string = @new_string', array('@org_string' => $original_str, '@new_string' => $new_str)),UPDATE_LOGFILE);
     if (trim($new_str) != trim($original_str)) {
       $updated = TRUE;
       $node[0] = $new_str;
@@ -180,16 +159,15 @@ function islandora_update_datastream($pid, $a_keys, $a_values, $dsid, $xpath, $n
     if (isset($content))
       $value = $item[$dsid]->content = $content;
     if (isset($value)) {
-      islandora_update_write_log(dt('successfully updated %dsid for %pid', array('%dsid' => $dsid, '%pid' => $pid)),'islandora_update.log');
+      islandora_update_metadata_write_log(dt('successfully updated @dsid for @pid', array('@dsid' => $dsid, '@pid' => $pid)),UPDATE_LOGFILE);
     }
     else {
-      islandora_update_write_log(dt('error updating %dsid for %pid', array('%dsid' => $dsid, '%pid' => $pid)),'islandora_update.log', 'error');
+      islandora_update_metadata_write_log(dt('error updating @dsid for @pid', array('@dsid' => $dsid, '@pid' => $pid)),UPDATE_LOGFILE, 'error');
     }
     time_nanosleep(0, 20000000);
   }
   unset($item);
 }
-
 
 
 /**
@@ -200,7 +178,7 @@ function islandora_update_datastream($pid, $a_keys, $a_values, $dsid, $xpath, $n
  * @param string $logfile
  * @return type 
  */
-function islandora_update_write_log($message, $logfile='', $status='info') {
+function islandora_update_metadata_write_log($message, $logfile='', $status='info') {
   // Determine log file
   if($logfile == '') {
     // checking if the constant for the log file is defined
