@@ -14,7 +14,7 @@ function islandora_update_metadata_drush_command() {
   $items = array();
 
   $items['islandora_update_metadata'] = array(
-    'description' => "scans the supplied datastream for fields with certain values and corrects known errors, this version requires drupal7 islandora",
+    'description' => "scans the supplied datastream for fields with certain values and corrects known errors, this version requires drupal7 islandora with islandora_solr_search enabled",
     'arguments' => array(
       'pids_file' => 'The path to a plain text file that contains a list of pids.  One pid per line',
       'substitution_text_file' => 'A text file that contains the values to be replaced and the values to update it with.
@@ -107,7 +107,7 @@ function islandora_update_metadata_go($pids_file, $substitution_text_file, $data
     }
   }
   else {
-    foreach ($objects as $object) {
+    foreach ($object_pids as $object) {
       //$item = new Fedora_Item($object);
       islandora_update_metadata_update_datastream($object, $a_keys, $a_values, $datastream_id, $xpath, $namespace);
       drush_print("processed $object # " . $count++);
