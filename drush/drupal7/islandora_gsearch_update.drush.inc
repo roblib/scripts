@@ -19,10 +19,13 @@ function islandora_gsearch_update_drush_command() {
       'pidlist_file' => 'The path to a plain text file that contains a list of pids one pid per line',
       'index_name' => 'the name of the index to update.',
       'gsearch_url' => 'the url for gsearch, ie. http://localhost/fedoragsearch/rest',
+      'gsearch_user' => 'the gsearch user',
+      'gsearch_password' => 'the gsearch password',
+      'solr_url' => 'the url for solr, we do an explicit delete in case the schema has changed (ie in case we\'ve change the uinqueKey from PID to id)',
       'interactive' => 'if TRUE then you will be asked to confirm the export for each object'
     ),
     'examples' => array(
-      'drush islandora_gsearch_update path/to/pidlist.txt gsearch_solr http://localhost:8080/fedoragsearch/rest TRUE',
+      'drush islandora_gsearch_update path/to/pidlist.txt gsearch_solr http://localhost:8080/fedoragsearch/rest fedoraAdmin fedoraAdmin http://localhost:8080/solr TRUE',
     ),
     'aliases' => array('islandoragu'),
     //'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN, // we can pass in users id on the command line using drush -u.
@@ -33,7 +36,7 @@ function islandora_gsearch_update_drush_command() {
 
 //drush hook
 function drush_islandora_gsearch_update($pidlist_file, $index_name, $gsearch_url,
-                                        $interactive) {
+                                        $gsearch_user, $gsearch_password, $solr_url, $interactive) {
   drush_print('Current working directory ' . getcwd());
   $objects = NULL;
   if (isset($pidlist_file)) {
@@ -55,17 +58,24 @@ function drush_islandora_gsearch_update($pidlist_file, $index_name, $gsearch_url
     drush_print(" and gsearch url of " . $gsearch_url);
   }
   else {
-    drush_print(" no index name specified");
+    drush_print(" no gsearch url specified");
+    return;
+  }
+  if (isset($solr_url)) {
+    drush_print(" and solr url of " . $solr_url);
+  }
+  else {
+    drush_print(" no solr url specified");
     return;
   }
 
   islandora_gsearch_update_doAction($objects, $index_name, $gsearch_url,
-     $interactive);
+    $gsearch_user, $gsearch_password, $solr_url, $interactive);
 }
 
 //just a function
 function islandora_gsearch_update_doAction($objects, $index_name, $gsearch_url,
-                                           $interactive) {
+    $gsearch_user, $gsearch_password, $solr_url, $interactive) {
 
   foreach ($objects as $object) {
     drush_print($object);
@@ -74,15 +84,20 @@ function islandora_gsearch_update_doAction($objects, $index_name, $gsearch_url,
   if (!drush_confirm(dt('are you sure you want to index @num objects?', array('@num' => $num)))) {
     drush_die('Aborting.');
   }
+  $options = array();
+  $options ['headers']['Authorization'] = 'Basic ' . base64_encode($gsearch_user . ':' . $gsearch_password);
   if ($interactive == 'TRUE') {
     foreach ($objects as $object) {
       $pid = trim($object);
       if (drush_confirm(dt('index @pid ?', array('@pid' => $object)))) {
         //?operation=updateIndex&action=fromPid&value=ir%3A2194&indexName=gsearch_solr
+        $solr_response = islandora_gsearch_delete_pid($pid, $solr_url);
         $url = $gsearch_url . "?operation=updateIndex&action=fromPid&value=$pid&indexName=$index_name";
-        $return_value = drupal_http_request($url);
-        drush_print(dt('updated %object using url %url with a return value of %return_value', array(
-            '%object' => $object, '%url' => $url, '%return_value' => $return_value->status_message)));
+        $return_value = drupal_http_request($url, $options);
+        drush_print(dt('updated @object with a gsearch return value of @return_value and
+         a solr return value of @solr_return_value ', array(
+            '@object' => $object, '@return_value' => $return_value->status_message,
+          '@solr_return_value' => $solr_response->status_message)));
         //drush_print($url);
       }
     }
@@ -90,12 +105,30 @@ function islandora_gsearch_update_doAction($objects, $index_name, $gsearch_url,
   else {
     foreach ($objects as $object) {
       $pid = trim($object);
+      $solr_response = islandora_gsearch_delete_pid($pid, $solr_url);
       $url = $gsearch_url . "?operation=updateIndex&action=fromPid&value=$pid&indexName=$index_name";
-      $return_value = drupal_http_request($url);
-      drush_print(dt('updated %object using url %url with a return value of %return_value', array(
-        '%object' => $object, '%url' => $url, '%return_value' => $return_value->status_message)));
+      $return_value = drupal_http_request($url, $options);
+      drush_print(dt('updated @object with a gsearch return value of @return_value and
+         a solr return value of @solr_return_value ', array(
+        '@object' => $object, '@return_value' => $return_value->status_message,
+        '@solr_return_value' => $solr_response->status_message)));
     }
   }
 }
 
+function islandora_gsearch_delete_pid($pid, $solr_url){
+  //curl http://localhost:8983/solr/update --data '<delete><query>*:*</query></delete>' -H 'Content-type:text/xml; charset=utf-8'
+  $headers = array('Content-Type' => 'text/xml');
+  $pid = str_replace(':', '\:', $pid);
+  $data = "<delete><query>PID:$pid</query></delete>";
+  $options = array(
+    'method' => 'POST',
+    'data' => $data,
+    'headers' => $headers,
+  );
+  $response = drupal_http_request($solr_url, $options);
+  return $response;
+}
+
 ?>
+

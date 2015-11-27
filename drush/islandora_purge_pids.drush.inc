@@ -14,7 +14,7 @@ function islandora_purge_pids_drush_command() {
   $items = array();
 
   $items['islandora_purge_pids'] = array(
-    'description' => "deletes all objects in a collection.  Please use with caution as purged objects are unrecoverable!  
+    'description' => "deletes objects, list of pids read from a text file.  Please use with caution as purged objects are unrecoverable!
       You will have to use the drush -u switch or you may not have permission to purge some objects.
         Currently relies on the Drupal6 version of Islandora.",
     'arguments' => array(
