@@ -19,7 +19,7 @@ echo "Successfully backed up openseadragon library to $tempDir"
 # put the sites in maintanence mode
 drush @sites vset --yes maintenance_mode 1
 # dump all the drupal databases to the users drush back directory
-drush sql-dump @sites --result-file
+drush @sites sql-dump --result-file
 # get the latest islandora modules
 for d in $1/modules/islandora_modules/*/ ; do
     cd "$d"
@@ -49,5 +49,5 @@ git pull
 # run update.php for all sites
 cd $1
 pwd
-drush updb @sites -y
+drush @sites updb -y
 drush @sites vset --yes maintenance_mode 0
