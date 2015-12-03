@@ -8,7 +8,7 @@ cd "$1"
 pwd
 # backup the islandora_modules and libraries directory
 # Since we are upating to head from a previous head update and we are updating several repos it is easier to back up the dirs than to track all the commits we would need to revert to
-tempDir=$(mktemp -d /tmp/island.XXXXXXXXXX) || { echo "Failed to create temp file"; exit 1; }
+tempDir=$(mktemp -d /tmp/island.XXXXXXXXXX) || { echo "Failed to create temp directory"; exit 1; }
 echo $tempDir
 (cp -r $1/modules/islandora_modules $tempDir) || { echo "ERROR Failed to backup islandora_modules directory"; exit 1; }
 echo "Successfully backed up islandora_modules directory to $tempDir"
@@ -19,7 +19,7 @@ echo "Successfully backed up openseadragon library to $tempDir"
 # put the sites in maintanence mode
 drush @sites vset --yes maintenance_mode 1
 # dump all the drupal databases to the users drush back directory
-drush @sites sql-dump --result-file
+drush @sites sql-dump --result-file --gzip --yes
 # get the latest islandora modules
 for d in $1/modules/islandora_modules/*/ ; do
     cd "$d"
