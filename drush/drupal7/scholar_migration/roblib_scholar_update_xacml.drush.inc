@@ -95,19 +95,23 @@ function roblib_scholar_fix_xacml($pid) {
     // add xacml rules for u1 mods element if any exist
     $xacml->managementRule->addUser(array($element->nodeValue));
   }
-  $xacml->managementRule->addUser(array($object->owner, 'admin'));
+  // some objects in old scholar have empty ownerid
+  if(!empty($object->owner)) {
+    $xacml->managementRule->addUser(array($object->owner, 'admin'));
+  } else {
+    $xacml->managementRule->addUser(array('admin'));
+  }
   $xacml->managementRule->addRole(array('administrator', 'scholar editor'));
   $islandora_xacml = new IslandoraXacml($object, $xacml->getXmlString(FALSE));
   $islandora_xacml->writeBackToFedora();
   drush_print(dt('updated xacml for @object', array(
     '@object' => $pid)));
 
-  $object = NULL;
-  $xacml = NULL;
-  $islandora_xacml = NULL;
-  $xml = NULL;
-  $xpath = NULL;
+  unset($object);
+  unset($islandora_xacml);
+
   return 0;
+
 
 }
 
