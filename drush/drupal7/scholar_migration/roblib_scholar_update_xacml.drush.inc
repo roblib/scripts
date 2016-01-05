@@ -72,6 +72,12 @@ function roblib_scholar_update_xacml_doAction($pids, $interactive) {
   }
 }
 
+/**
+ * Adds or updates the POLICY datastream so that it is understandable by the xacml editor.
+ * @param string $pid
+ * @return int
+ *   return -1 if we could not read the MODS 0 on success
+ */
 function roblib_scholar_fix_xacml($pid) {
   $object = islandora_object_load($pid);
   module_load_include('inc', 'islandora_xacml_api', 'includes/xacml');
@@ -89,7 +95,6 @@ function roblib_scholar_fix_xacml($pid) {
     // add xacml rules for u1 mods element if any exist
     $xacml->managementRule->addUser(array($element->nodeValue));
   }
-  //$xacml->viewingRule->addRole(array('anonymous user', 'authenticated user'));
   $xacml->managementRule->addUser(array($object->owner, 'admin'));
   $xacml->managementRule->addRole(array('administrator', 'scholar editor'));
   $islandora_xacml = new IslandoraXacml($object, $xacml->getXmlString(FALSE));
@@ -102,6 +107,7 @@ function roblib_scholar_fix_xacml($pid) {
   $islandora_xacml = NULL;
   $xml = NULL;
   $xpath = NULL;
+  return 0;
 
 }
 
