@@ -38,7 +38,7 @@ function drush_roblib_scholar_fix_cmodels($pidlist_file, $interactive) {
     $pids = file($pidlist_file);
   }
   else {
-    drush_print("no query file specified");
+    drush_print("no pidlist file specified");
     return;
   }
 
