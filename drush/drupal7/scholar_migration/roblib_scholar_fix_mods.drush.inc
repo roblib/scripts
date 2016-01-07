@@ -76,7 +76,7 @@ function roblib_scholar_fix_mods_doAction($pids, $interactive) {
  * Update the citation and thesis cmodel namespaces.
  * @param string $pid
  * @return int
- *   return -1 if we could not read the MODS 0 on success
+ *   return FALSE if we could not read and update the MODS TRUE on success
  */
 function roblib_scholar_fix_mods($pid) {
   $object = islandora_object_load($pid);
