@@ -63,10 +63,11 @@ function roblib_scholar_clone_datastream_doAction($pids, $old_dsid, $new_dsid, $
     foreach ($pids as $pid) {
       $pid = trim($pid);
       if (drush_confirm(dt('are you sure you want to copy @old_ds to @new_ds for @pid ?',
-        array('@pid' => $pid,
+        array(
+          '@pid' => $pid,
           '@old_ds' => $old_dsid,
           '@new_ds' => $new_dsid,
-          )))) {
+        )))) {
         roblib_scholar_clone_datastream($pid, $old_dsid, $new_dsid, $delete_old);
       }
     }
@@ -95,25 +96,45 @@ function roblib_scholar_clone_datastream($pid, $old_dsid, $new_dsid, $delete_old
   if (empty($old_datastream)) {
     drush_print(dt('no @old_ds datastream found for for object @pid, cannot clone datastream',
       array('@pid' => $pid, '@old_ds' => $old_dsid)));
+    unset($object);
     return FALSE;
   }
   $removed_ds = ($delete_old === 'TRUE') ? 'purged' : 'did not purge';
+
   $datastream = new NewFedoraDatastream($new_dsid, 'M', $object, $object->repository);
   $datastream->state = $old_datastream->state;
   $datastream->versionable = $old_datastream->versionable;
-  $datastream->label = 'PDF';
+  $datastream->label = $new_dsid;
   $datastream->mimetype = $old_datastream->mimetype;
   $datastream->logMessage = "copied $old_dsid to $new_dsid and $removed_ds $old_dsid as part of migration to IslandScholar 7.x";
   $tmp_file = drupal_tempnam(file_directory_temp(), 'rlscmi');
   $success = $old_datastream->getContent($tmp_file);
-  if($success){
+  if ($success) {
     $datastream->setContentFromFile($tmp_file);
-  }  else {
+  }
+  else {
     drush_print(dt('Error retrieving content of @old_ds from @pid',
       array('@old_ds' => $old_dsid, '@pid' => $pid)));
+    unlink($tmp_file);
+    unset($object);
     return FALSE;
   }
-  $object->ingestDatastream($datastream);
+  $ingest_ok = $object->ingestDatastream($datastream);
+  if (!$ingest_ok) {
+    drush_print(dt('Failed to copy @old_ds to @new_ds for @pid, @msg', array(
+      '@pid' => $pid,
+      '@old_ds' => $old_dsid,
+      '@new_ds' => $new_dsid,
+      '@msg' => 'Datastream already exists',
+    )));
+    unlink($tmp_file);
+    unset($object);
+    return FALSE;
+  }
+  unlink($tmp_file);
+  if ($delete_old) {
+    $object->purgeDatastream($old_dsid);
+  }
   unset($object);
   drush_print(dt("copied @old_ds to @new_ds for @pid, @removed_ds @old_ds", array(
     '@pid' => $pid,
@@ -121,6 +142,6 @@ function roblib_scholar_clone_datastream($pid, $old_dsid, $new_dsid, $delete_old
     '@new_ds' => $new_dsid,
     '@removed_ds' => $removed_ds,
   )));
-  unlink($tmp_file);
+
   return TRUE;
 }
