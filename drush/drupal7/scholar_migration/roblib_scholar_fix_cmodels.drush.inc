@@ -17,10 +17,12 @@ function roblib_scholar_fix_cmodels_drush_command() {
     'description' => "Change the cmodel namespaces from islandora to ir.",
     'arguments' => array(
       'pidlist_file' => 'The path to a plain text file that contains a list of pids one pid per line',
-     'interactive' => 'if TRUE then you will be asked to confirm the export for each object'
+      'old_cmodel' => 'The cmodel you don\'t want anymore',
+      'new_cmodel' => 'The cmodel you want to change to',
+      'interactive' => 'if TRUE then you will be asked to confirm the change for each object'
     ),
     'examples' => array(
-      'drush -u 1 roblib_scholar_fix_cmodels path/to/pidlist.txt TRUE',
+      'drush -u 1 roblib_scholar_fix_cmodels path/to/pidlist.txt old_cmodel new_cmodel TRUE',
     ),
     'aliases' => array('rsfc'),
     //'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN, // we can pass in users id on the command line using drush -u.
@@ -30,7 +32,7 @@ function roblib_scholar_fix_cmodels_drush_command() {
 }
 
 //drush hook
-function drush_roblib_scholar_fix_cmodels($pidlist_file, $interactive) {
+function drush_roblib_scholar_fix_cmodels($pidlist_file, $old_cmodel, $new_cmodel, $interactive) {
   drush_print('Current working directory ' . getcwd());
   $pids = NULL;
   if (isset($pidlist_file)) {
@@ -42,11 +44,11 @@ function drush_roblib_scholar_fix_cmodels($pidlist_file, $interactive) {
     return;
   }
 
-  roblib_scholar_fix_cmodels_doAction($pids, $interactive);
+  roblib_scholar_fix_cmodels_doAction($pids, $old_cmodel, $new_cmodel, $interactive);
 }
 
 //just a function
-function roblib_scholar_fix_cmodels_doAction($pids, $interactive) {
+function roblib_scholar_fix_cmodels_doAction($pids, $old_cmodel, $new_cmodel, $interactive) {
 
   foreach ($pids as $pid) {
     drush_print(trim($pid));
@@ -60,14 +62,14 @@ function roblib_scholar_fix_cmodels_doAction($pids, $interactive) {
     foreach ($pids as $pid) {
       $pid = trim($pid);
       if (drush_confirm(dt('correct cmodel namespace for @pid ?', array('@pid' => $pid)))) {
-        roblib_scholar_fix_cmodel($pid);
+        roblib_scholar_fix_cmodel($pid, $old_cmodel, $new_cmodel);
       }
     }
   }
   else {
     foreach ($pids as $pid) {
       $pid = trim($pid);
-      roblib_scholar_fix_cmodel($pid);
+      roblib_scholar_fix_cmodel($pid, $old_cmodel, $new_cmodel);
     }
   }
 }
@@ -78,55 +80,49 @@ function roblib_scholar_fix_cmodels_doAction($pids, $interactive) {
  * @return int
  *   return -1 if we could not read the MODS 0 on success
  */
-function roblib_scholar_fix_cmodel($pid) {
+function roblib_scholar_fix_cmodel($pid, $old_cmodel, $new_cmodel) {
   $object = islandora_object_load($pid);
-  $cmodels = $object->relationships->get('info:fedora/fedora-system:def/model#', 'hasModel');
-  $new_cmodel = NULL;
-  $old_cmodel = NULL;
-  foreach ($cmodels as $cmodel) {
-    switch ($cmodel['object']['value']) {
-      case 'islandora:citationCModel':
-        drush_print(dt('found @cmodel for object @pid',
-          array('@cmodel' => $cmodel['object']['value'], '@pid' => $pid )));
-        $new_cmodel = 'ir:citationCModel';
-        $old_cmodel = $cmodel['object']['value'];
-        break;
-      case 'islandora:thesisCModel':
-        drush_print(dt('found @cmodel for object @pid',
-          array('@cmodel' => $cmodel['object']['value'], '@pid' => $pid )));
-        $new_cmodel = 'ir:thesisCModel';
-        $old_cmodel = $cmodel['object']['value'];
-        break;
-    }
+  if(empty($object)){
+    drush_print(dt("Could not load object for @pid, cannot update", array(
+      '@pid' => $pid,
+    )));
+    return false;
   }
-  // No old cmodel found this does not need to be updated
-  if(empty($new_cmodel)){
-    drush_print(dt('no old cmodel found for for object @pid, no update required',
-      array('@pid' => $pid )));
+  $cmodels = $object->relationships->get('info:fedora/fedora-system:def/model#', 'hasModel', $new_cmodel);
+  // check to make sure new cmodel doesn't already exist
+  if (!empty($cmodels)) {
+    drush_print(dt("Object @pid already has a cmodel with @new_cmodel no update required", array(
+      '@pid' => $pid,
+      '@new_cmodel' => $new_cmodel,
+    )));
     return FALSE;
   }
-  // check to make sure new cmodel doesn't already exist
-  foreach($cmodels as $cmodel){
-    if($cmodel['object']['value'] == $new_cmodel){
-      drush_print(dt("Object @pid already has a cmodel with @new_cmodel no update required", array(
-        '@pid' => $pid,
-        '@new_cmodel' => $new_cmodel,
-      )));
-      return FALSE;
-    }
-  }
-  // Remove the old hasModel statement
-  $object->relationships->remove(FEDORA_MODEL_URI, 'hasModel', $old_cmodel);
-  // Add the new hasModel statement
-  $object->relationships->add(FEDORA_MODEL_URI,'hasModel', $new_cmodel);
 
-  unset($object);
-  drush_print(dt("modified rels of @pid added @new_cmodel, removed @old_cmodel", array(
+  $success = $object->relationships->remove(FEDORA_MODEL_URI, 'hasModel', $old_cmodel);
+  if ($success) {
+    drush_print(dt("removed cmodel @old_cmodel for @pid", array(
+      '@pid' => $pid,
+      '@old_cmodel' => $old_cmodel,
+    )));
+  }
+  else {
+    drush_print(dt("Did not remove cmodel @old_cmodel for @pid, not updating this object", array(
+      '@pid' => $pid,
+      '@old_cmodel' => $old_cmodel,
+    )));
+    // This object does not have the cmodel we want to change so exiting
+    return FALSE;
+  }
+  // Add the new hasModel statement
+  $object->relationships->add(FEDORA_MODEL_URI, 'hasModel', $new_cmodel);
+
+  drush_print(dt("added new  cmodel @new_cmodel for @pid", array(
     '@pid' => $pid,
     '@new_cmodel' => $new_cmodel,
-    '@old_cmodel' => $old_cmodel,
   )));
-  return TRUE;
+
+  unset($object);
+  return $success;
 
 }
 
