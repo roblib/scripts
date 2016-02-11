@@ -90,16 +90,51 @@ function roblib_scholar_fix_mods($pid) {
   $mods_xml_doc->loadXML($mods);
   $is_namepart_modified = roblib_scholar_fix_author($mods_xml_doc);
   $is_part_moved = roblib_scholar_move_part($mods_xml_doc);
-  if ($is_namepart_modified || $is_part_moved) {
+  $is_schema_location_modified = roblib_scholar_update_schema_loc($mods_xml_doc);
+  if ($is_namepart_modified || $is_part_moved || $is_schema_location_modified) {
     $raw_xml = $mods_xml_doc->saveXML($mods_xml_doc);
     $object['MODS']->content = $raw_xml;
+    drush_print(dt("modified MODS of @pid", array(
+      '@pid' => $pid,
+    )));
+  } else {
+    drush_print(dt("DID NOT modify MODS of @pid", array(
+      '@pid' => $pid,
+    )));
   }
 
   unset($object);
-  drush_print(dt("modified MODS of @pid", array(
-    '@pid' => $pid,
-  )));
+
   return TRUE;
+}
+
+/**
+ * Change the xsi:schemaLocation, many objects point to a vre2 url which may not exist in the future.
+ *
+ * @param DomDocument $mods_xml_doc
+ *
+ * @return bool
+ *   TRUE if the mods has been modified.
+ */
+function roblib_scholar_update_schema_loc(&$mods_xml_doc) {
+  $is_modified = FALSE;
+  $query = "//mods:mods";
+  $xpath = new DOMXPath($mods_xml_doc);
+  $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+  $results = $xpath->query($query, $mods_xml_doc);
+  if(!$results->length > 0){
+    return FALSE;
+  }
+  $mods = $results->item(0);
+  $schema_location = $mods->getAttribute("xsi:schemaLocation");
+  if($schema_location == "http://www.loc.gov/mods/v3 http://www.islandscholar.ca/sites/vre2.upei.ca.islandscholar/files/mods-3-4.xsd"){
+    $schema_location = "http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-4.xsd";
+    $mods->removeAttribute('xsi:schemaLocation');
+    $mods->setAttribute('xsi:schemaLocation', $schema_location);
+    $is_modified = TRUE;
+    drush_print("Modified schema location");
+  }
+  return $is_modified;
 }
 
 /**
@@ -112,7 +147,7 @@ function roblib_scholar_fix_mods($pid) {
  */
 function roblib_scholar_fix_author(&$mods_xml_doc) {
   $is_modified = FALSE;
-  $query = "//mods:name/mods:role/mods:roleTerm";
+  $query = "//mods:name[@type='personal']/mods:role/mods:roleTerm";
   $xpath = new DOMXPath($mods_xml_doc);
   $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
   $results = $xpath->query($query, $mods_xml_doc);
@@ -144,7 +179,7 @@ function roblib_scholar_fix_author(&$mods_xml_doc) {
     }
   }
   if ($is_modified) {
-    drush_print("Modified namePart element");
+    drush_print("Modified name element");
   }
   return $is_modified;
 }
@@ -158,9 +193,10 @@ function roblib_scholar_move_part(&$mods_xml_doc) {
   if (!empty($results->item(0))) {
     return FALSE;
   }
-  $query = "//mods:relatedItem/mods:part";
-  $xpath = new DOMXPath($mods_xml_doc);
-  $xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
+  // only do this for host not series or others
+  $query = "//mods:relatedItem[@type='host']/mods:part";
+  //$xpath = new DOMXPath($mods_xml_doc);
+  //$xpath->registerNamespace('mods', 'http://www.loc.gov/mods/v3');
   $results = $xpath->query($query, $mods_xml_doc);
   if (empty($results->item(0))) {
     return FALSE;

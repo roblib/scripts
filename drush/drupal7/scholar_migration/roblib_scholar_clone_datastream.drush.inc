@@ -99,6 +99,12 @@ function roblib_scholar_clone_datastream($pid, $old_dsid, $new_dsid, $delete_old
     unset($object);
     return FALSE;
   }
+  if(isset($object[$new_dsid])){
+    drush_print(dt('Already has @new_dsid datastream found for for object @pid, cannot clone datastream',
+      array('@pid' => $pid, '@new_dsid' => $new_dsid)));
+    unset($object);
+    return FALSE;
+  }
   $removed_ds = ($delete_old === 'TRUE') ? 'purged' : 'did not purge';
 
   $datastream = new NewFedoraDatastream($new_dsid, 'M', $object, $object->repository);

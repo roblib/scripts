@@ -18,10 +18,11 @@ function roblib_scholar_fix_label_drush_command() {
     with either fedoraAdmin or the value of mads identifier type = u1",
     'arguments' => array(
       'pidlist_file' => 'The path to a plain text file that contains a list of pids one pid per line',
+      'datastream_id' => 'the datastream id to use as the source of the label and/or owner id, only supports MADS or MODS',
       'interactive' => 'if TRUE then you will be asked to confirm the export for each object'
     ),
     'examples' => array(
-      'drush -u 1 roblib_scholar_fix_label path/to/pidlist.txt TRUE',
+      'drush -u 1 roblib_scholar_fix_label path/to/pidlist.txt dsid TRUE',
     ),
     'aliases' => array('rsfl'),
     //'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN, // we can pass in users id on the command line using drush -u.
@@ -31,7 +32,7 @@ function roblib_scholar_fix_label_drush_command() {
 }
 
 //drush hook
-function drush_roblib_scholar_fix_label($pidlist_file, $interactive) {
+function drush_roblib_scholar_fix_label($pidlist_file, $dsid, $interactive) {
   drush_print('Current working directory ' . getcwd());
   $pids = NULL;
   if (isset($pidlist_file)) {
@@ -43,11 +44,11 @@ function drush_roblib_scholar_fix_label($pidlist_file, $interactive) {
     return;
   }
 
-  roblib_scholar_fix_label_doAction($pids, $interactive);
+  roblib_scholar_fix_label_doAction($pids, $dsid, $interactive);
 }
 
 //just a function
-function roblib_scholar_fix_label_doAction($pids, $interactive) {
+function roblib_scholar_fix_label_doAction($pids, $dsid, $interactive) {
 
   foreach ($pids as $pid) {
     drush_print(trim($pid));
@@ -61,14 +62,14 @@ function roblib_scholar_fix_label_doAction($pids, $interactive) {
     foreach ($pids as $pid) {
       $pid = trim($pid);
       if (drush_confirm(dt('fix label for @pid ?', array('@pid' => $pid)))) {
-        roblib_scholar_fix_label_and_owner($pid);
+        roblib_scholar_fix_label_and_owner($pid, $dsid);
       }
     }
   }
   else {
     foreach ($pids as $pid) {
       $pid = trim($pid);
-      roblib_scholar_fix_label_and_owner($pid);
+      roblib_scholar_fix_label_and_owner($pid, $dsid);
     }
   }
 }
@@ -79,21 +80,23 @@ function roblib_scholar_fix_label_doAction($pids, $interactive) {
  * @return bool
  *   return FALSE if we could not read and update the MODS TRUE on success
  */
-function roblib_scholar_fix_label_and_owner($pid) {
+function roblib_scholar_fix_label_and_owner($pid, $dsid) {
   $object = islandora_object_load($pid);
-  $mads = $object['MADS']->content;
-  if (empty($mads)) {
-    drush_print(dt('no MADS datastream found for for object @pid, cannot update',
+  $namespace = strtolower($dsid);
+  $namespace_string = ($dsid == 'MADS') ? 'http://www.loc.gov/mads/v2' : 'http://www.loc.gov/mods/v3';
+  $datastream = $object[$dsid]->content;
+  if (empty($datastream)) {
+    drush_print(dt("no $dsid datastream found for object @pid, cannot update",
       array('@pid' => $pid)));
     return FALSE;
   }
-  $mads_xml_doc = new DOMDocument();
-  $mads_xml_doc->loadXML($mads);
-  if($object->label == 'Array') {
-    $query = "//mads:titleInfo/mads:title";
-    $xpath = new DOMXPath($mads_xml_doc);
-    $xpath->registerNamespace('mads', 'http://www.loc.gov/mads/v2');
-    $results = $xpath->query($query, $mads_xml_doc);
+  $xml_doc = new DOMDocument();
+  $xml_doc->loadXML($datastream);
+  if($object->label == 'Array' || $object->label == '') {
+    $query = "//$namespace:titleInfo/$namespace:title";
+    $xpath = new DOMXPath($xml_doc);
+    $xpath->registerNamespace($namespace, $namespace_string);
+    $results = $xpath->query($query, $xml_doc);
     if ($results->length > 0) {
       // we can have only one label
       $object->label = $results->item(0)->nodeValue;
@@ -104,10 +107,10 @@ function roblib_scholar_fix_label_and_owner($pid) {
 
   if(empty($object->owner)) {
     //identifier type="u1"
-    $query = "//mads:identifier[@type='u1']";
-    $xpath = new DOMXPath($mads_xml_doc);
-    $xpath->registerNamespace('mads', 'http://www.loc.gov/mads/v2');
-    $results = $xpath->query($query, $mads_xml_doc);
+    $query = "//$namespace:identifier[@type='u1']";
+    $xpath = new DOMXPath($xml_doc);
+    $xpath->registerNamespace($namespace, $namespace_string);
+    $results = $xpath->query($query, $xml_doc);
     if ($results->length > 0) {
       // we can have only one object owner
       $object->owner = $results->item(0)->nodeValue;
