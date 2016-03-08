@@ -119,11 +119,16 @@ function roblib_scholar_update_dc($pid, $cmodel, $dsid) {
   }
   $new_dc_doc = xml_form_builder_transform_document($transform_path, $xml);
   $new_dc_xml = $new_dc_doc->saveXML($new_dc_doc);
-  $object['DC']->content = $new_dc_xml;
-
-  drush_print(dt('Successfully updated DC for Object @pid based on @dsid',
-    array('@pid' => $pid, '@dsid' => $dsid)));
-
+  if(!empty($new_dc_xml)){
+    $object['DC']->content = $new_dc_xml;
+    drush_print(dt('Successfully updated DC for Object @pid based on @dsid',
+      array('@pid' => $pid, '@dsid' => $dsid)));
+  }  else {
+    drush_print(dt('Failed to update DC for Object @pid based on @dsid, Could not read xml',
+      array('@pid' => $pid, '@dsid' => $dsid)));
+    unset($object);
+    return FALSE;
+  }
   unset($object);
 
   return TRUE;
