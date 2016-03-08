@@ -80,9 +80,19 @@ function roblib_scholar_update_xacml_doAction($pids, $interactive) {
  */
 function roblib_scholar_fix_xacml($pid) {
   $object = islandora_object_load($pid);
+  if(empty($object)){
+    drush_print(dt('unable to update xacml for @object, not found', array(
+      '@object' => $pid)));
+    return -2;
+  }
   module_load_include('inc', 'islandora_xacml_api', 'includes/xacml');
   $xacml = new Xacml();
   $xml = new DOMDocument();
+  if(empty($object['MODS'])){
+    drush_print(dt('unable to update xacml for @object, could not load MODS datastream', array(
+      '@object' => $pid)));
+    return -3;
+  }
   $test = $xml->loadXML($object['MODS']->getContent(''));
   if (empty($test)) {
     return -1;

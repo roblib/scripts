@@ -82,6 +82,11 @@ function roblib_scholar_fix_label_doAction($pids, $dsid, $interactive) {
  */
 function roblib_scholar_fix_label_and_owner($pid, $dsid) {
   $object = islandora_object_load($pid);
+  if(empty($object)){
+    drush_print(dt("could not load object @pid, cannot update",
+      array('@pid' => $pid)));
+    return FALSE;
+  }
   $namespace = strtolower($dsid);
   $namespace_string = ($dsid == 'MADS') ? 'http://www.loc.gov/mads/v2' : 'http://www.loc.gov/mods/v3';
   $datastream = $object[$dsid]->content;

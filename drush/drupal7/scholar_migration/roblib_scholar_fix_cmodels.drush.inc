@@ -95,6 +95,7 @@ function roblib_scholar_fix_cmodel($pid, $old_cmodel, $new_cmodel) {
       '@pid' => $pid,
       '@new_cmodel' => $new_cmodel,
     )));
+    unset($object);
     return FALSE;
   }
 
@@ -111,6 +112,7 @@ function roblib_scholar_fix_cmodel($pid, $old_cmodel, $new_cmodel) {
       '@old_cmodel' => $old_cmodel,
     )));
     // This object does not have the cmodel we want to change so exiting
+    unset($object);
     return FALSE;
   }
   // Add the new hasModel statement

@@ -92,6 +92,11 @@ function roblib_scholar_clone_datastream_doAction($pids, $old_dsid, $new_dsid, $
  */
 function roblib_scholar_clone_datastream($pid, $old_dsid, $new_dsid, $delete_old) {
   $object = islandora_object_load($pid);
+  if(empty($object)){
+    drush_print(dt('could not load object @pid cannot clone datastream',
+      array('@pid' => $pid)));
+    return FALSE;
+  }
   $old_datastream = $object[$old_dsid];
   if (empty($old_datastream)) {
     drush_print(dt('no @old_ds datastream found for for object @pid, cannot clone datastream',

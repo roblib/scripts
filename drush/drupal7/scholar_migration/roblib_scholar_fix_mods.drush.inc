@@ -80,6 +80,11 @@ function roblib_scholar_fix_mods_doAction($pids, $interactive) {
  */
 function roblib_scholar_fix_mods($pid) {
   $object = islandora_object_load($pid);
+  if(empty($object)){
+    drush_print(dt('Could not load object @pid, cannot update',
+      array('@pid' => $pid)));
+    return FALSE;
+  }
   $mods = $object['MODS']->content;
   if (empty($mods)) {
     drush_print(dt('no MODS datastream found for for object @pid, cannot update',
