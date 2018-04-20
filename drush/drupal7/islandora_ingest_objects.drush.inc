@@ -65,7 +65,7 @@ function drush_islandora_ingest_objects_islandora_ingest_foxml_files() {
   foreach ($files as $file) {
     try {
       $pid = $apim->ingest(array('file' => $file));
-      drush_log("Ingested PID " . $pid, 'error');
+      drush_log("Ingested PID " . $pid, 'ok');
     }
     catch (\RepositoryException $e) {
 
