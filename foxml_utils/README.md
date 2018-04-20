@@ -45,9 +45,9 @@ You can run the following script to do two things:
 
 1. Generate a set of FOXML files in a subdirectory that have references to unreachable datastreams stripped out of the FOXML. 
 2. Generate a report in a CSV file listing:
-  a. The object with missing datastream's PID and the datastream's DSID
-  b. If the missing datastream is the most recent one, indicating that the object should get manual attention
-  C. If the datastream has no good versions of the affected datastream requiting manual regeneration of derivatives if the datastream is derivative. If the missing datastream is not a derivative datastream the data may be lost.
+  1. The object with missing datastream's PID and the datastream's DSID
+  2. If the missing datastream is the most recent one, indicating that the object should get manual attention
+ 3. If the datastream has no good versions of the affected datastream requiting manual regeneration of derivatives if the datastream is derivative. If the missing datastream is not a derivative datastream the data may be lost.
 
 ```bash
 python3 /path/to/foxml_utils/foxml_invalid_datastream_cleaner.py --directory=.
