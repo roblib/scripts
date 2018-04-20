@@ -5,25 +5,31 @@ For moving collections from server-to-server, for Islandora running on Drupal 7 
 ## Get list of un-migrated objects
 
 You can use Solr to get a list of PIDs from the source and destination repositories if they have Solr properly installed and connected to Islandora:
+```bash
+curl "http://hp1.islandarchives.ca:8080/solr/collection1/select?q=PID%3Abdh*&fl=PID&wt=csv&indent=true&rows=30000&sort=PID+asc" > bdh_hp1.csv
+ curl "http://bowingdownhome.ca:8080/solr/collection1/select?q=PID%3Abdh*&fl=PID&wt=csv&indent=true&rows=30000&sort=PID+asc" > bdh_bdh.csv
+```
 
-$ curl "http://hp1.islandarchives.ca:8080/solr/collection1/select?q=PID%3Abdh*&fl=PID&wt=csv&indent=true&rows=30000&sort=PID+asc" > bdh_hp1.csv
-$ curl "http://bowingdownhome.ca:8080/solr/collection1/select?q=PID%3Abdh*&fl=PID&wt=csv&indent=true&rows=30000&sort=PID+asc" > bdh_bdh.csv
-# Get list of PIDs that are missing from one of the two sets of PIDs:
-$ 
-$ comm -23 bdh*sorted* # Remember this command only works if both lists are sorted.
-
+### Get list of PIDs that are missing from one of the two sets of PIDs:
+```bash
+comm -23 bdh*sorted* # Remember this command only works if both lists are sorted.
+```
 
 Steps to export, repair and then import objects from a repository.
 
 Put a list of PIDs to export into a text file, run export.py on the source repository server:
 
-$ python3 /path/to/export.py --password=<password> --pids-file=/path/to/[pids.txt] --export-type=migrate
+```bash
+python3 /path/to/export.py --password=<password> --pids-file=/path/to/[pids.txt] --export-type=migrate
+```
 
 Often Fedora is installed with "localhost" left as the hostname configuration. This needs to be changed to the server's hostname so that datastreams can be retrieved during import.
 
 You can fix this hostname with the following command:
 
+```bash
 $ perl -i -pe 's/localhost:8080/[source-hostname]:8080/g' ./*.xml
+```
 
 Replace [source-hostname] with the actual hostname of the source repository's server.
 
@@ -37,13 +43,15 @@ An import will fail if even an older version of a datastream's binary URL return
 
 You can run the following script to do two things:
 
-    1. Generate a set of FOXML files in a subdirectory that have references to unreachable datastreams stripped out of the FOXML. 
-    2. Generate a report in a CSV file listing:
-        a. The object with missing datastream's PID and the datastream's DSID
-        b. If the missing datastream is the most recent one, indicating that the object should get manual attention
-        C. If the datastream has no good versions of the affected datastream requiting manual regeneration of derivatives if the datastream is derivative. If the missing datastream is not a derivative datastream the data may be lost.
+1. Generate a set of FOXML files in a subdirectory that have references to unreachable datastreams stripped out of the FOXML. 
+2. Generate a report in a CSV file listing:
+  a. The object with missing datastream's PID and the datastream's DSID
+  b. If the missing datastream is the most recent one, indicating that the object should get manual attention
+  C. If the datastream has no good versions of the affected datastream requiting manual regeneration of derivatives if the datastream is derivative. If the missing datastream is not a derivative datastream the data may be lost.
 
-$ python3 /path/to/foxml_utils/foxml_invalid_datastream_cleaner.py --directory=.
+```bash
+python3 /path/to/foxml_utils/foxml_invalid_datastream_cleaner.py --directory=.
+```
 
 Where --directory indicates a directory with the exported FOXML files.
 
@@ -64,8 +72,7 @@ lrwxr-xr-x  1 aoneill  staff   41  4 Apr 11:08 scripts -> /Users/aoneill/dev/scr
 ```
 Then run an ingest command by running:
 ```bash
-drush --user=1 islandora-ingest-foxml-files  --foxml-dir=/Users/aoneill/tmp/expo
-rt
+drush --user=1 islandora-ingest-foxml-files  --foxml-dir=/Users/aoneill/tmp/export
 ```
 
 Use drush help islandora-ingest-foxml-files to see other options, including how to override the Drupal filter and use fedoraAdmin credentials directly.
