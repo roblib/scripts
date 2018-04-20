@@ -1,4 +1,6 @@
-# Islandora Migration Guide
+# Islandora Repository Collection Migration Guide and Utilities
+
+For moving collections from server-to-server, for Islandora running on Drupal 7 and Feodra 3.8. Migrating collections to Fedora 4 is covered in teh official DuraSpace documentation. This guide and accompanying scripts were created in the course of migrating the contents of the http://bowingdownhome.ca/ collection from a dedicated server to a central repository.
 
 ## Get list of un-migrated objects
 
