@@ -53,4 +53,19 @@ Affected files will be created in a subdirectory named 'clean'.
 
 There are a few ways to import FOXML files, one is the use the import command I recently added to the islandora_datastream_crud project. drush islandora_datastream_crud_ingest_foxml_files  --foxml_dir=/home/aoneill/clean --fedora_pass=sqr1j3rky --fedora_url=http://hp1.islandarchives.ca:8080/fedora --fedora_user=fedoraAdmin
 
+Install the Drupal 7-specific Drush commands form this 'scripts' repository by creating a shortcut in your home directory under the .drush folder.
+```bash
+cmtctest:foxml_utils aoneill$ cd ~/.drush/
+cmtctest:.drush aoneill$ ls -l
+total 0
+drwxr-xr-x  5 aoneill  staff  160 20 Apr 14:07 cache
+lrwxr-xr-x  1 aoneill  staff   44 13 Apr 10:59 islandora_datastream_crud -> /Users/aoneill/dev/islandora_datastream_crud
+lrwxr-xr-x  1 aoneill  staff   41  4 Apr 11:08 scripts -> /Users/aoneill/dev/scripts/drush/drupal7/
+```
+Then run an ingest command by running:
+```bash
+drush --user=1 islandora-ingest-foxml-files  --foxml-dir=/Users/aoneill/tmp/expo
+rt
+```
 
+Use drush help islandora-ingest-foxml-files to see other options, including how to override the Drupal filter and use fedoraAdmin credentials directly.
