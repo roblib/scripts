@@ -8,7 +8,7 @@
  */
 
 //drush hook
-define(UPDATE_LOGFILE, '/tmp/islandora_update.log');
+define('UPDATE_LOGFILE', '/tmp/islandora_update.log');
 
 function islandora_update_metadata_drush_command() {
   $items = array();

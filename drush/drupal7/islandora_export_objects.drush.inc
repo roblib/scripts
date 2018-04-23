@@ -56,34 +56,36 @@ function drush_islandora_export_objects($query_file, $interactive) {
  */
 function islandora_export_objects_doAction($query_file, $interactive) {
   //module_load_include('inc', 'fedora_repository', 'api/fedora_item');
-  $query = file_get_contents($query_file);
+  ini_set("auto_detect_line_endings", "1");
+  $objects = file($query_file);
   $location = drush_find_tmp();
   drush_print('files are located in ' . $location);
-  drush_print($query);
-  if (!isset($query)) {
-    drush_die('no query found');
+
+  if (!isset($objects)) {
+    drush_die('no objects found');
     return;
   }
+
   global $user;
   $tuque = islandora_get_tuque_connection($user);
   $repository = $tuque->repository;
-  $results = $repository->ri->itqlQuery($query);
-  $objects = islandora_export_sparql_results_as_array($results);
+
   foreach ($objects as $object) {
-    drush_print($object);
+    drush_print(trim($object));
   }
-  //drush_print("are you sure you want to delete ".count($objects)." objects");
+
   $num = count($objects);
   if (!drush_confirm(dt('are you sure you want to export @num objects?', array('@num' => $num)))) {
-    // was: return drush_set_error('CORE_SYNC_ABORT', 'Aborting.');
     drush_die('Aborting.');
   }
 
 
   if ($interactive == 'TRUE') {
     foreach ($objects as $pid) {
-      if (drush_confirm(dt('export this  @pid ?', array('@pid' => $object)))) {
-        $foxml = $repository->api->m->export($pid, array('context' => 'archive'));
+      $pid = trim($pid);
+      if (drush_confirm(dt('export this  @pid ?', array('@pid' => $pid)))) {
+        $foxml = $repository->api->m->export($pid, array('context' => 'migrate'));
+
         $file_name = str_replace(':', '-', $pid);
         //TODO create the drush_export directory if it does not exist
         $file_name = drush_find_tmp() . '/drush_export/' . $file_name . '.foxml';
@@ -94,7 +96,8 @@ function islandora_export_objects_doAction($query_file, $interactive) {
   }
   else {
     foreach ($objects as $pid) {
-      $foxml = $repository->api->m->export($pid, array('context' => 'archive'));
+      $pid = trim($pid);
+      $foxml = $repository->api->m->export($pid, array('context' => 'migrate'));
       $file_name = str_replace(':', '-', $pid);
       $file_name = drush_find_tmp() . '/drush_export/' . $file_name . '.foxml';
       drush_print('saving file to ' . $file_name);
@@ -103,18 +106,21 @@ function islandora_export_objects_doAction($query_file, $interactive) {
   }
   drush_print('files are located in ' . $location);
 }
+
 /**
- * returns an array of pids 
+ * returns an array of pids
  * @todo pull this up into an api
  * @param SimpleXMLElement $content
  * @return array
  */
 function islandora_export_sparql_results_as_array($results) {
-  $resultsarray = array();
-  foreach($results as $result){
-   // var_dump($result);
-    $resultsarray[] = $result['object']['value'];
-  }
-  return $resultsarray;
+    $resultsarray = array();
+    foreach($results as $result){
+        // var_dump($result);
+        $resultsarray[] = $result['object']['value'];
+    }
+    return $resultsarray;
 }
+
+
 ?>
