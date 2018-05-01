@@ -31,6 +31,9 @@ function islandora_export_objects_drush_command() {
       'include-datastreams' => array(
         'description' => 'TRUE to export each objects datastreams in a folder named for the object\'s PID',
       ),
+      'include-datastream-file-extensions' => array(
+        'description' => 'TRUE to append file extensions to datastreams. This breaks re-import but lets you load the ifle smore easily in other programs.'
+      ),
     ),
     'examples' => array(
       'drush islandora_export_objects /path/to/query.txt TRUE',
@@ -39,39 +42,18 @@ function islandora_export_objects_drush_command() {
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN, // we can pass in users id on the command line using drush -u.
   );
 
-  $items['islandora-migrate-objects'] = array(
-    'description' => "Create a clone of an object in this site's Fedora repository in a remot eIslandora instance.",
+  $items['islandora-import-objects'] = array(
+    'description' => "Create an object and import the datastreams in a folder resulting from islandora-export-objects command.",
 
     'options' => array(
-      'pids' => array(
-        'description' => 'Comma-separated list of PIDs to migrate',
+      'foxml-files' => array(
+        'description' => 'Comma-separated list of FOXML to clone',
       ),
-      'pids-file-dir' => array(
+      'foxml-files-dir' => array(
         'description' => 'Path to PIDs file',
       ),
-      'pids-filename' => array(
-        'description' => 'Filename, excluding the path, of the PIDs file',
-      ),
-      'dest-url' => array(
-        'description' => 'URL of the destination Fedora repository',
-        'required' => TRUE,
-      ),
-      'dest-user' => array(
-        'description' =>'Repository user',
-        'required' => TRUE,
-      ),
-      'dest-pass' => array(
-        'description' => 'Destination repository password',
-        'required' => TRUE,
-      ),
-      'source-url' => array(
-        'description' => 'URL of the source Fedora repository',
-      ),
-      'source-user' => array(
-        'description' =>'Source user',
-      ),
-      'source-pass' => array(
-        'description' => 'Source repository password',
+      'use-exported-datastreams' => array(
+        'description' => 'TRUE to load datastreams exported by the islandora-export-datastreams command',
       ),
     ),
     'bootstrap' => DRUSH_BOOTSTRAP_DRUPAL_LOGIN, // we can pass in users id on the command line using drush -u.
@@ -85,7 +67,7 @@ function drush_islandora_export_objects() {
   $pids = drush_islandora_export_get_pids_from_params();
 
   $location = drush_get_option('pids-file-dir');
-  global $islandora_mime_types;
+
   if (!isset($pids)) {
     drush_die('no objects found');
     return;
@@ -116,9 +98,15 @@ function drush_islandora_export_objects() {
 
         foreach ($datastreams as $dsid => $datastream) {
 
-          $ext = islandora_get_extension_for_mimetype($datastream['mimetype']);
+          $ext = drush_get_option('include-datastream-file-extensions') ? islandora_get_extension_for_mimetype($datastream['mimetype']) : '';
+
           $ds_filename = $location . '/' . $file_base_name . '/' . $dsid . $ext;
 
+          $ds_profile = $repository->api->m->getDatastream($pid, $dsid);
+          $ds_profile_filename = $location . '/' . $file_base_name . '/' . $dsid . '.profile.json';
+          $fp = fopen($ds_profile_filename, 'w');
+          fwrite($fp, json_encode($ds_profile, JSON_PRETTY_PRINT));
+          fclose($fp);
           $repository->api->a->getDatastreamDissemination($pid, $dsid, NULL, $ds_filename);
 
         }
@@ -147,44 +135,58 @@ function drush_islandora_export_get_pids_from_params() {
     $dir = rtrim(drush_get_option('pids-file-dir', '/tmp'), '/');
     $pids_filename = $dir . '/' . drush_get_option('pids-filename');
 
-    $pids = file_get_contents($pids_filename);
+    $pids = explode("\n", file_get_contents($pids_filename));
 
     return $pids;
   }
   return NULL;
 }
 
-function drush_islandora_export_objects_islandora_migrate_objects() {
-  $pids = drush_islandora_export_get_pids_from_params();
-  if (!empty(drush_get_option('source-user', '')) && !empty(drush_get_option('source-pass', ''))) {
-    $source_user = new StdClass();
-    $source_user->name = drush_get_option('source-user');
-    $source_user->pass = drush_get_option('source-pass');
-    $source_url = drush_get_option('source-url', variable_get('islandora_base_url', 'http://localhost:8080/fedora'));
-    $source_tuque = new IslandoraTuque($source_user, $source_url);
-  }
-  else {
-    $source_tuque = islandora_get_tuque_connection();
-  }
-  $source_connection = $source_tuque->connection;
-  $source_serializer = new FedoraApiSerializer();
-  $dest_user = new StdClass();
-  $dest_user->name = drush_get_option('dest-user');
-  $dest_user->pass = drush_get_option('dest-pass');
-  $dest_tuque = new IslandoraTuque($dest_user, drush_get_option('dest-url'));
+function drush_islandora_export_objects_islandora_import_objects() {
+  $foxml_files = explode(',', drush_get_option('foxml-files'));
+  $tuque = islandora_get_tuque_connection();
 
-  $source_apim = new FedoraApiM($source_connection, $source_serializer);
-  $dest_tuque = islandora_get_tuque_connection();
+  $connection = $tuque->connection;
+  $serializer = new FedoraApiSerializer();
 
+  $source_apim = new FedoraApiM($connection, $serializer);
 
-  foreach($pids_file as $pid) {
-    $pid = trim($pid);
+  foreach($foxml_files as $foxml_file) {
+    $path = rtrim(drush_get_option('foxml-files-dir', '/')) . '/' . $foxml_file;
+    if (file_exists($path)) {
+      $foxml = simplexml_load_file($path);
+      $foxml->registerXPathNamespace('foxml', "info:fedora/fedora-system:def/foxml#");
+      $result = $foxml->xpath("/foxml:digitalObject/@PID");
+      $pid = (string)$result[0];
+      if (!empty($pid)) {
+        $property_names = array_map('drush_islandora_export_objects_strip_fedora_prefix', array_map('strval', $foxml->xpath("/foxml:digitalObject/foxml:objectProperties/foxml:property/@NAME")));
+        $property_values = array_map('strval', $foxml->xpath("/foxml:digitalObject/foxml:objectProperties/foxml:property/@VALUE"));
+        $properties = array_combine($property_names, $property_values);
+        $datastreams = drush_islandora_export_objects_get_datastreams_for_object($pid, drush_get_option('foxml-files-dir'), $foxml_file);
+        //$new_obj = islandora_prepare_new_object($pid, $properties['label'], )
+      }
+    }
+
     try {
       $datastreams = $source_tuque->api->a->listDatastreams($pid);
     }
     catch(\Exception $e) {
       drush_log($e->getMessage());
     }
+  }
+}
+
+function drush_islandora_export_objects_strip_fedora_prefix($str) {
+  return explode('#', $str)[1];
+}
+
+function drush_islandora_export_objects_get_datastreams_for_object($pid, $dir, $foxml_file) {
+  $path_info = pathinfo($dir . '/' . $foxml_file);
+  $ds_path = $path_info['dirname'] . '/' . $path_info['filename'];
+  $ds_list_file = $ds_path . '.json';
+  if (file_exists($ds_path) && file_exists($ds_list_file)) {
+    $ds_list = array_keys(json_decode(file_get_contents($ds_list_file), TRUE));
+
   }
 }
 
