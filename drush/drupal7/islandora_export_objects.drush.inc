@@ -49,6 +49,9 @@ function islandora_export_objects_drush_command() {
       'foxml-files' => array(
         'description' => 'Comma-separated list of FOXML to clone',
       ),
+      'foxml-files-list' => array(
+        'description' => 'File contianing list of files to import.'
+      ),
       'foxml-files-dir' => array(
         'description' => 'Path to PIDs file',
       ),
@@ -143,7 +146,13 @@ function drush_islandora_export_get_pids_from_params() {
 }
 
 function drush_islandora_export_objects_islandora_import_objects() {
-  $foxml_files = explode(',', drush_get_option('foxml-files'));
+  module_load_include('inc', 'islandora', 'includes/utilities');
+  if (drush_get_option('foxml-files')) {
+    $foxml_files = explode(',', drush_get_option('foxml-files'));
+  }
+  else {
+    $foxml_files = explode("\n", file_get_contents(drush_get_option('foxml-files-list')));
+  }
   $tuque = islandora_get_tuque_connection();
 
   $connection = $tuque->connection;
@@ -152,7 +161,11 @@ function drush_islandora_export_objects_islandora_import_objects() {
   $source_apim = new FedoraApiM($connection, $serializer);
 
   foreach($foxml_files as $foxml_file) {
+    if (empty($foxml_file)) {
+      continue;
+    }
     $path = rtrim(drush_get_option('foxml-files-dir', '/')) . '/' . $foxml_file;
+    $path_info = pathinfo($path);
     if (file_exists($path)) {
       $foxml = simplexml_load_file($path);
       $foxml->registerXPathNamespace('foxml', "info:fedora/fedora-system:def/foxml#");
@@ -162,16 +175,16 @@ function drush_islandora_export_objects_islandora_import_objects() {
         $property_names = array_map('drush_islandora_export_objects_strip_fedora_prefix', array_map('strval', $foxml->xpath("/foxml:digitalObject/foxml:objectProperties/foxml:property/@NAME")));
         $property_values = array_map('strval', $foxml->xpath("/foxml:digitalObject/foxml:objectProperties/foxml:property/@VALUE"));
         $properties = array_combine($property_names, $property_values);
-        $datastreams = drush_islandora_export_objects_get_datastreams_for_object($pid, drush_get_option('foxml-files-dir'), $foxml_file);
-        //$new_obj = islandora_prepare_new_object($pid, $properties['label'], )
+        $datastreams = drush_islandora_export_objects_get_datastreams_for_object($pid, drush_get_option('foxml-files-dir'), $foxml_file, $path_info['filename']);
+        $object = islandora_prepare_new_object($pid, $properties['label'], $datastreams);
+        try {
+          $tuque->repository->ingestObject($object);
+          drush_log("Ingested $pid.", 'ok');
+        }
+        catch (\Exception $e) {
+          drush_log($e->getmessage, 'error');
+        }
       }
-    }
-
-    try {
-      $datastreams = $source_tuque->api->a->listDatastreams($pid);
-    }
-    catch(\Exception $e) {
-      drush_log($e->getMessage());
     }
   }
 }
@@ -180,14 +193,25 @@ function drush_islandora_export_objects_strip_fedora_prefix($str) {
   return explode('#', $str)[1];
 }
 
-function drush_islandora_export_objects_get_datastreams_for_object($pid, $dir, $foxml_file) {
+function drush_islandora_export_objects_get_datastreams_for_object($pid, $dir, $foxml_file, $base_filename) {
+  $datastreams = array();
   $path_info = pathinfo($dir . '/' . $foxml_file);
   $ds_path = $path_info['dirname'] . '/' . $path_info['filename'];
   $ds_list_file = $ds_path . '.json';
   if (file_exists($ds_path) && file_exists($ds_list_file)) {
     $ds_list = array_keys(json_decode(file_get_contents($ds_list_file), TRUE));
-
+    foreach ($ds_list as $ds) {
+      $ds_array = array();
+      $ds_array['dsid'] = $ds;
+      $ds_json = json_decode(file_get_contents($dir . '/' . $base_filename . '/' . $ds . '.profile.json'), TRUE);
+      $ds_array['label'] = $ds_json['dsLabel'];
+      $ds_array['mimetype'] = $ds_json['dsMIME'];
+      $ds_array['control_group'] = $ds_json['dsControlGroup'];
+      $ds_array['datastream_file'] = $dir . '/' . $base_filename . '/' . $ds;
+      $datastreams[] = $ds_array;
+    }
   }
+  return $datastreams;
 }
 
 /**
