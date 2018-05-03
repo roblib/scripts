@@ -33,7 +33,7 @@ cd /var/www/html/drupal/sites/default/
 drush --user=1 islandora-export-objects --pids-file-dir=/home/yourhome/export --pids-filename=pids.txt  --include-datastreams=TRUE
 ```
 
-include-datastreams will export the profile data and file objects of all of the exported objects' datastreams. 
+"--include-datastreams" will export the profile data and file objects of all of the exported objects' datastreams. 
 
 The output of exporting the datastreams will look like this:
 
@@ -61,7 +61,7 @@ bdh_4805
  - DC
 bdh_4805.json 
 bdh_4805.xml  
-```bash
+```
 
 Move the files to the destination host and then run the following to import:
 
