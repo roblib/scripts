@@ -68,3 +68,41 @@ Move the files to the destination host and then run the following to import:
 ```bash
 drush --user=1 islandora-import-objects --foxml-files-dir=/home/userdir/export --foxml-files-list=/home/userdir/export/bdh_remaining_files.txt --use-exported-datastreams=TRUE
 ```
+
+## migrate.py Import and export in one step
+
+### Set up drush site aliases
+
+The migrate.py command takes advantage of Drush's [site aliases](https://www.drupal.org/node/1401522) to save you typing the same options for source and destinatinon connection over and over again.
+
+migrate.py assumes that the 'source' Islandora site is a remote connection and the destination Islandora site is accessible locally.
+
+So your ~/.drush/aliases.drushrc.php file would look something like this:
+
+```php
+<?php
+/**
+ * Development alias
+ * Set up each entry to suit your site configuration
+ */
+$aliases['prod'] = array (
+  'uri' => 'www.yourislandorasite.ca',
+  'root' => '/var/www/html/drupal',
+  'remote-user' => 'sshuser',
+  'remote-host' => 'yourislandorasite.ca',
+);
+$aliases['local'] = array(
+  'url' => 'local.test',
+  'root' => '/Users/myuser/Sites/drupal',
+);
+```
+
+And an example migrate commadn would look like this:
+
+```bash
+python3 migrate.py -a @prod -d @local -s yourislandorasite.ca -u sshuser --pids=example:1,example:2,example:3 --verbose
+```
+
+The python script is not parsing the drush aliases, just passing them directly to drush, hence the need to supply the source ssh address on the command line for now.
+
+migrate.py is a wrapper for the drush commands islandora-export-objects and islandora-import-objects which have their own documentation in this repository's main README.md.

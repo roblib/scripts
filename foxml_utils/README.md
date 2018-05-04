@@ -76,3 +76,4 @@ drush --user=1 islandora-ingest-foxml-files  --foxml-dir=/Users/aoneill/tmp/expo
 ```
 
 Use drush help islandora-ingest-foxml-files to see other options, including how to override the Drupal filter and use fedoraAdmin credentials directly.
+
